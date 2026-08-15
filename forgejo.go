@@ -28,6 +28,19 @@ func NewForgejo(base, token string) (*Forgejo, error) {
 	return &Forgejo{BaseURL: u, Token: token}, nil
 }
 
+// Remote implements Remoter by deriving the clone URL from the configured
+// base URL rather than the API's own clone_url, which can report a host or
+// port the caller can't actually reach -- inside a container it's the
+// container's internal port, and behind a reverse proxy it can be wrong
+// entirely. Forgejo's git-http-backend accepts the same "token <t>"
+// Authorization header as its REST API, so no username is needed.
+func (f *Forgejo) Remote(r Repo) Remote {
+	return Remote{
+		CloneURL:   f.BaseURL.JoinPath(r.Path + ".git").String(),
+		AuthHeader: "token " + f.Token,
+	}
+}
+
 type forgejoSearchResponse struct {
 	Data []forgejoRepo `json:"data"`
 }
