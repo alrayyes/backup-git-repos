@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/stretchr/testify/require"
 )
 
 // fakeMirrorer records where it was asked to sync and writes a minimal bare
@@ -36,4 +38,31 @@ func TestRun(t *testing.T) {
 		}
 		return runner.Run(ctx, opts)
 	})
+}
+
+// blockingMirrorer waits for its context to end and reports that as the
+// sync's error, the way Mirror's real git subprocess does when its context
+// is canceled.
+type blockingMirrorer struct{}
+
+func (blockingMirrorer) Sync(ctx context.Context, _ backup.Remote, _ string) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestRunTimeout(t *testing.T) {
+	runner := backup.Runner{
+		Lister:   newFakeLister(),
+		Mirrorer: blockingMirrorer{},
+		Remoter:  fakeRemoter{},
+	}
+
+	result, err := runner.Run(context.Background(), backup.Options{
+		Dest:    t.TempDir(),
+		State:   backup.StateActive,
+		Timeout: time.Millisecond,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, result.Failed)
 }

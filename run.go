@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -25,6 +26,7 @@ type Options struct {
 	Dest        string
 	State       State
 	Concurrency int
+	Timeout     time.Duration
 	Log         *slog.Logger
 }
 
@@ -79,8 +81,15 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		}
 
 		g.Go(func() error {
+			repoCtx := ctx
+			if opts.Timeout > 0 {
+				var cancel context.CancelFunc
+				repoCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+				defer cancel()
+			}
+
 			dir := filepath.Join(opts.Dest, filepath.FromSlash(repo.Path)+".git")
-			if err := r.Mirrorer.Sync(ctx, r.Remoter.Remote(repo), dir); err != nil {
+			if err := r.Mirrorer.Sync(repoCtx, r.Remoter.Remote(repo), dir); err != nil {
 				log.Error("mirror failed", "path", repo.Path, "error", err)
 				failed.Add(1)
 				return nil
