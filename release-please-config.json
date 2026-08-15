@@ -1,0 +1,19 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "package-name": "backup-git-repos",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "package.json",
+          "jsonpath": "$.version"
+        }
+      ],
+      "include-component-in-tag": false
+    }
+  },
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true
+}
