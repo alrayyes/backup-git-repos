@@ -17,9 +17,9 @@ type fakeLister struct {
 
 func newFakeLister() *fakeLister {
 	return &fakeLister{repos: []backup.Repo{
-		{Path: activeRepoPath, Archived: false, Empty: false},
-		{Path: archivedRepoPath, Archived: true, Empty: false},
-		{Path: emptyRepoPath, Archived: false, Empty: true},
+		{Path: backup.TestActiveRepoPath, Archived: false, Empty: false},
+		{Path: backup.TestArchivedRepoPath, Archived: true, Empty: false},
+		{Path: backup.TestEmptyRepoPath, Archived: false, Empty: true},
 	}}
 }
 
@@ -38,7 +38,7 @@ func (f *fakeLister) ListRepos(_ context.Context, state backup.State) ([]backup.
 }
 
 func TestFakeLister(t *testing.T) {
-	testLister(t, func(*testing.T) backup.Lister {
+	backup.TestLister(t, func(*testing.T) backup.Lister {
 		return newFakeLister()
 	})
 }

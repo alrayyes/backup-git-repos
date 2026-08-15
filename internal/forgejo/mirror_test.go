@@ -1,10 +1,9 @@
 //go:build integration
 
-package backup_test
+package forgejo_test
 
 import (
 	"context"
-	"encoding/base64"
 	"net/http"
 	"os"
 	"os/exec"
@@ -12,15 +11,16 @@ import (
 	"testing"
 
 	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/forgejo"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMirrorSync(t *testing.T) {
-	fixture := startForgejo(t)
-	remote := backup.Remote{
-		CloneURL:   fixture.BaseURL + "/team/active-repo.git",
-		AuthHeader: "Basic " + base64.StdEncoding.EncodeToString([]byte(fixture.AdminUsername+":"+fixture.Token)),
-	}
+	f := start(t)
+	client, err := forgejo.New(f.BaseURL, f.Token)
+	require.NoError(t, err)
+
+	remote := client.Remote(backup.Repo{Path: "team/active-repo"})
 	dir := filepath.Join(t.TempDir(), "active-repo.git")
 	m := backup.Mirror{}
 	ctx := context.Background()
@@ -37,8 +37,8 @@ func TestMirrorSync(t *testing.T) {
 	})
 
 	t.Run("fetches new commits on a second run", func(t *testing.T) {
-		fixture.post(t, "/api/v1/repos/team/active-repo/contents/new.txt", map[string]any{
-			"content": base64.StdEncoding.EncodeToString([]byte("hi")),
+		f.post(t, "/api/v1/repos/team/active-repo/contents/new.txt", map[string]any{
+			"content": "aGk=", // "hi"
 			"message": "add new.txt",
 			"branch":  "main",
 		}, nil)
@@ -49,7 +49,7 @@ func TestMirrorSync(t *testing.T) {
 	})
 
 	t.Run("prunes a branch deleted upstream", func(t *testing.T) {
-		fixture.do(t, http.MethodDelete, "/api/v1/repos/team/active-repo/branches/feature", nil, nil)
+		f.do(t, http.MethodDelete, "/api/v1/repos/team/active-repo/branches/feature", nil, nil)
 
 		require.NoError(t, m.Sync(ctx, remote, dir))
 
@@ -59,7 +59,7 @@ func TestMirrorSync(t *testing.T) {
 	t.Run("never writes the token into git config", func(t *testing.T) {
 		data, err := os.ReadFile(filepath.Join(dir, "config"))
 		require.NoError(t, err)
-		require.NotContains(t, string(data), fixture.Token)
+		require.NotContains(t, string(data), f.Token)
 	})
 }
 

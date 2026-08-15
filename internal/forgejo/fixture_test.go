@@ -1,6 +1,6 @@
 //go:build integration
 
-package backup_test
+package forgejo_test
 
 import (
 	"bytes"
@@ -14,34 +14,34 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/exec"
-	"github.com/testcontainers/testcontainers-go/modules/forgejo"
+	tcforgejo "github.com/testcontainers/testcontainers-go/modules/forgejo"
 )
 
-// forgejoFixture is a running Forgejo instance seeded with a known set of
+// fixture is a running Forgejo instance seeded with a known set of
 // repositories: an active one carrying an extra branch and tag, an archived
 // one, an empty one, and a personal one under the admin account.
-type forgejoFixture struct {
+type fixture struct {
 	BaseURL       string
 	Token         string
 	AdminUsername string
 }
 
-// startForgejo boots a Forgejo container, mints an API token for it, and
-// seeds the fixtures every test in this package expects.
-func startForgejo(t *testing.T) forgejoFixture {
+// start boots a Forgejo container, mints an API token for it, and seeds the
+// fixtures every test in this package expects.
+func start(t *testing.T) fixture {
 	t.Helper()
 	ctx := context.Background()
 
-	ctr, err := forgejo.Run(ctx, forgejoImage)
+	ctr, err := tcforgejo.Run(ctx, image)
 	testcontainers.CleanupContainer(t, ctr)
 	require.NoError(t, err)
 
 	baseURL, err := ctr.ConnectionString(ctx)
 	require.NoError(t, err)
 
-	f := forgejoFixture{
+	f := fixture{
 		BaseURL:       baseURL,
-		Token:         mintForgejoToken(ctx, t, ctr),
+		Token:         mintToken(ctx, t, ctr),
 		AdminUsername: ctr.AdminUsername(),
 	}
 	f.seed(t)
@@ -49,9 +49,9 @@ func startForgejo(t *testing.T) forgejoFixture {
 	return f
 }
 
-// mintForgejoToken runs the CLI command as the "git" user, which is required
-// since Forgejo refuses to run it as root, and returns the raw token.
-func mintForgejoToken(ctx context.Context, t *testing.T, ctr *forgejo.Container) string {
+// mintToken runs the CLI command as the "git" user, which is required since
+// Forgejo refuses to run it as root, and returns the raw token.
+func mintToken(ctx context.Context, t *testing.T, ctr *tcforgejo.Container) string {
 	t.Helper()
 
 	code, output, err := ctr.Exec(ctx, []string{
@@ -74,7 +74,7 @@ func mintForgejoToken(ctx context.Context, t *testing.T, ctr *forgejo.Container)
 // team/active-repo with an extra branch and tag, team/archived-repo (marked
 // archived after creation, since the create endpoint has no such field),
 // team/empty-repo, and a personal repository under the admin account.
-func (f forgejoFixture) seed(t *testing.T) {
+func (f fixture) seed(t *testing.T) {
 	t.Helper()
 
 	f.post(t, "/api/v1/orgs", map[string]any{"username": "team"}, nil)
@@ -95,24 +95,24 @@ func (f forgejoFixture) seed(t *testing.T) {
 
 // post sends an authenticated JSON POST and requires a 2xx response,
 // decoding the body into out when it's non-nil.
-func (f forgejoFixture) post(t *testing.T, path string, body, out any) {
+func (f fixture) post(t *testing.T, path string, body, out any) {
 	t.Helper()
 	f.do(t, http.MethodPost, path, body, out)
 }
 
 // patch sends an authenticated JSON PATCH and requires a 2xx response.
-func (f forgejoFixture) patch(t *testing.T, path string, body any) {
+func (f fixture) patch(t *testing.T, path string, body any) {
 	t.Helper()
 	f.do(t, http.MethodPatch, path, body, nil)
 }
 
 // get sends an authenticated GET and decodes the response body into out.
-func (f forgejoFixture) get(t *testing.T, path string, out any) {
+func (f fixture) get(t *testing.T, path string, out any) {
 	t.Helper()
 	f.do(t, http.MethodGet, path, nil, out)
 }
 
-func (f forgejoFixture) do(t *testing.T, method, path string, body, out any) {
+func (f fixture) do(t *testing.T, method, path string, body, out any) {
 	t.Helper()
 
 	var reqBody io.Reader

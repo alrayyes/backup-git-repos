@@ -13,8 +13,19 @@ import (
 // actually under test.
 const configWithNoDest = "forges: []\n"
 
+// neverNewRunner fails the test if called. None of the CLI tests here reach
+// the point of actually running a backup -- they all exercise flag and
+// config validation, which happens first -- so a real adapter factory would
+// never be invoked either.
+func neverNewRunner(t *testing.T) backup.NewRunner {
+	return func(backup.ForgeConfig) (backup.Runner, error) {
+		t.Fatal("newRunner should not have been called")
+		return backup.Runner{}, nil
+	}
+}
+
 func TestCLIHelpListsCommands(t *testing.T) {
-	root := backup.NewRootCommand("test")
+	root := backup.NewRootCommand("test", neverNewRunner(t))
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetArgs([]string{"--help"})
@@ -28,7 +39,7 @@ func TestCLIHelpListsCommands(t *testing.T) {
 func TestCLIRunRequiresDest(t *testing.T) {
 	path := writeConfig(t, configWithNoDest)
 
-	root := backup.NewRootCommand("test")
+	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
 	root.SetArgs([]string{"run", "--config", path})
 
@@ -38,7 +49,7 @@ func TestCLIRunRequiresDest(t *testing.T) {
 }
 
 func TestCLIRunRejectsUnknownState(t *testing.T) {
-	root := backup.NewRootCommand("test")
+	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
 	root.SetArgs([]string{"run", "--config", "config.yaml", "--dest", "/tmp/dest", "--state", "bogus"})
 

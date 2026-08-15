@@ -37,10 +37,16 @@ type cliFlags struct {
 	timeout     time.Duration
 }
 
+// NewRunner builds the Runner for a configured forge. Implementations live
+// with their adapters under internal/, so this package -- which every
+// adapter imports for Repo, Lister and the rest -- can't reference them
+// directly without a cycle. The composition root (main) supplies one.
+type NewRunner func(ForgeConfig) (Runner, error)
+
 // NewRootCommand builds the backup-git-repos command line. Each RunE stays a
 // thin shell: parse and validate the flags, then call into runBackup, which
 // knows nothing about cobra.
-func NewRootCommand(version string) *cobra.Command {
+func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 	var flags cliFlags
 
 	root := &cobra.Command{
@@ -55,7 +61,7 @@ func NewRootCommand(version string) *cobra.Command {
 		Use:   "run",
 		Short: "Mirror repositories from the configured forges",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBackup(cmd, flags, false)
+			return runBackup(cmd, flags, newRunner, false)
 		},
 	}
 	addRunFlags(runCmd, &flags)
@@ -65,7 +71,7 @@ func NewRootCommand(version string) *cobra.Command {
 		Use:   "list",
 		Short: "Print what would be backed up, clone nothing",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBackup(cmd, flags, true)
+			return runBackup(cmd, flags, newRunner, true)
 		},
 	}
 	addRunFlags(listCmd, &flags)
@@ -90,7 +96,7 @@ func addRunFlags(cmd *cobra.Command, flags *cliFlags) {
 	cmd.Flags().DurationVar(&flags.timeout, "timeout", 30*time.Minute, "per-repository timeout")
 }
 
-func runBackup(cmd *cobra.Command, flags cliFlags, listOnly bool) error {
+func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly bool) error {
 	if flags.config == "" {
 		return errors.New("--config is required")
 	}
@@ -119,7 +125,7 @@ func runBackup(cmd *cobra.Command, flags cliFlags, listOnly bool) error {
 			continue
 		}
 
-		if err := runForge(cmd, fc, dest, state, flags, listOnly, log); err != nil {
+		if err := runForge(cmd, fc, dest, state, flags, newRunner, listOnly, log); err != nil {
 			return err
 		}
 	}
@@ -128,7 +134,7 @@ func runBackup(cmd *cobra.Command, flags cliFlags, listOnly bool) error {
 }
 
 func runForge(
-	cmd *cobra.Command, fc ForgeConfig, dest string, state State, flags cliFlags, listOnly bool, log *slog.Logger,
+	cmd *cobra.Command, fc ForgeConfig, dest string, state State, flags cliFlags, newRunner NewRunner, listOnly bool, log *slog.Logger,
 ) error {
 	runner, err := newRunner(fc)
 	if err != nil {
@@ -158,17 +164,4 @@ func runForge(
 	}
 	cmd.Printf("%s: synced %d, skipped %d, failed %d\n", fc.Name, result.Synced, result.Skipped, result.Failed)
 	return nil
-}
-
-func newRunner(fc ForgeConfig) (Runner, error) {
-	switch fc.Kind {
-	case "forgejo":
-		client, err := NewForgejo(fc.URL, fc.Token)
-		if err != nil {
-			return Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
-		}
-		return Runner{Lister: client, Mirrorer: Mirror{}, Remoter: client}, nil
-	default:
-		return Runner{}, fmt.Errorf("forge %q: %w", fc.Name, &UnknownKindError{Kind: fc.Kind})
-	}
 }

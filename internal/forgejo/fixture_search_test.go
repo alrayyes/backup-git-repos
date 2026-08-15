@@ -1,6 +1,6 @@
 //go:build integration
 
-package backup_test
+package forgejo_test
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestForgejoFixtures(t *testing.T) {
-	f := startForgejo(t)
+func TestFixturesSearch(t *testing.T) {
+	f := start(t)
 
 	var result struct {
 		Data []struct {
