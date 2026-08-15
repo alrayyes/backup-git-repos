@@ -26,9 +26,15 @@ func bareRepo(t *testing.T) string {
 	return bare
 }
 
+// runGit sets a commit identity via env vars rather than relying on the
+// machine's global git config, which a CI runner has none of.
 func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
+		"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
+	)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 }
