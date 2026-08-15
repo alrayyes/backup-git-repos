@@ -12,7 +12,6 @@ API
 HTTPS
 SSH
 LFS
-Go
 Docker
 Dependabot
 backup-git-repos
@@ -51,3 +50,4 @@ gzip(ped)?
 filesystem
 subprocess(es)?
 runtime
+CPUs?
