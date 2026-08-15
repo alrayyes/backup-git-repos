@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/backup-git-repos
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+
+# release-please writes the release notes from Conventional Commits and
+# creates the GitHub release; goreleaser only hangs binaries on it. Left on,
+# the release would carry the notes twice, and release.mode's default of
+# keep-existing is what stops goreleaser from replacing the curated ones with
+# a raw shortlog.
+changelog:
+  disable: true
