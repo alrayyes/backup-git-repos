@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "name": "active-repo",
+    "path": "active-repo",
+    "path_with_namespace": "team/active-repo",
+    "default_branch": "main",
+    "http_url_to_repo": "http://localhost/team/active-repo.git",
+    "web_url": "http://localhost/team/active-repo",
+    "archived": false,
+    "empty_repo": false,
+    "visibility": "private",
+    "created_at": "2026-08-15T08:03:15.000Z"
+  },
+  {
+    "id": 3,
+    "name": "empty-repo",
+    "path": "empty-repo",
+    "path_with_namespace": "team/empty-repo",
+    "default_branch": null,
+    "http_url_to_repo": "http://localhost/team/empty-repo.git",
+    "web_url": "http://localhost/team/empty-repo",
+    "archived": false,
+    "empty_repo": true,
+    "visibility": "private",
+    "created_at": "2026-08-15T08:03:20.000Z"
+  }
+]
