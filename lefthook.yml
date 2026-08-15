@@ -1,0 +1,120 @@
+# pre-commit fixes and restages; pre-push only checks. A hook that rewrote files
+# under a push would leave the pushed commit and your working tree disagreeing
+# about what was reviewed.
+
+pre-commit:
+  parallel: true
+  jobs:
+    # `golangci-lint fmt` is the fixer in v2 -- gofumpt and goimports stopped
+    # being linters and moved to the formatters block, so `run` is the check and
+    # this is the write. CI installs a pinned golangci-lint and is the gate that
+    # cannot be skipped; locally it is skipped when the binary is missing.
+    - name: golangci-lint-fmt
+      glob: "*.go"
+      run: |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint fmt {staged_files}
+        else
+          echo "golangci-lint not installed, skipping (CI will still check)."
+        fi
+      stage_fixed: true
+
+    # JSON and JSONC only. Go belongs to golangci-lint and Biome has no business
+    # there.
+    - name: biome
+      glob: "*.{json,jsonc}"
+      run: ./node_modules/.bin/biome check --write {staged_files}
+      stage_fixed: true
+
+    # Layout, then structure, in that order and never the other way round.
+    # Prettier decides how the Markdown is laid out -- it is the only tool here
+    # that formats a table -- and markdownlint then judges what Prettier
+    # produced. Reversed, markdownlint would fix something Prettier is about to
+    # overwrite. `piped` is what guarantees the order; the jobs would otherwise
+    # run in parallel with the rest.
+    - name: markdown
+      glob: "*.md"
+      group:
+        piped: true
+        jobs:
+          - name: prettier
+            run: ./node_modules/.bin/prettier --write {staged_files}
+            stage_fixed: true
+
+          - name: markdownlint
+            run: ./node_modules/.bin/markdownlint-cli2 --fix {staged_files}
+            stage_fixed: true
+
+    # The YAML is Prettier's too -- Biome does not format it and nothing else
+    # here does, so without this it drifts with whoever edited it last. Its own
+    # job rather than a wider glob on the one above: markdownlint has no
+    # business in a pipeline that ends at a .yml file.
+    - name: prettier-yaml
+      glob: "*.{yml,yaml}"
+      run: ./node_modules/.bin/prettier --write {staged_files}
+      stage_fixed: true
+
+    # Style and clarity. Vale has no fixer -- rewriting someone's sentence is not
+    # a hook's business -- so this reports and fails.
+    #
+    # Whole repo rather than the staged files, so the hook and CI run the
+    # identical command and cannot drift. It takes well under a second.
+    #
+    # The style packages are downloaded rather than committed, so a fresh clone
+    # has none. Sync once when they are missing rather than on every commit,
+    # which would put a network round trip in front of every `git commit`.
+    - name: vale
+      glob: "*.md"
+      run: |
+        if [ ! -d styles/proselint ]; then
+          ./node_modules/@vvago/vale/bin/vale sync
+        fi
+        ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules}/**' .
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: ./node_modules/.bin/commitlint --edit {1}
+
+# Every linter again, in check mode over the whole tree rather than the staged
+# set, plus the fast suite. The commit hook only ever saw the files you touched.
+#
+# The container suite is the deliberate omission. `go test -tags=integration`
+# boots a real Forgejo, which is more than a push should wait on; CI runs it on
+# every pull request. `-tags='integration gitlab'` boots GitLab CE and is
+# nightly-only. Run either by hand when you have touched an adapter.
+#
+# ltex-cli-plus is the other omission: a 305 MB download shipping its own Java
+# is more than a push should wait on. CI runs it, and the editor runs the same
+# engine over LSP, so it is caught earlier than here anyway.
+pre-push:
+  parallel: true
+  jobs:
+    - name: golangci-lint
+      run: |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint run
+        else
+          echo "golangci-lint not installed, skipping (CI will still check)."
+        fi
+
+    - name: go-test
+      run: go test -race ./...
+
+    - name: biome
+      run: ./node_modules/.bin/biome check
+
+    # `--check` rather than `--write`: it reports what is misformatted and
+    # fails, leaving the files alone. Split the same way CI splits it, so a red
+    # job says which of the two went out of shape.
+    - name: prettier
+      run: ./node_modules/.bin/prettier --check '**/*.md'
+
+    - name: prettier-yaml
+      run: ./node_modules/.bin/prettier --check '**/*.{yml,yaml}'
+
+    - name: markdownlint
+      run: ./node_modules/.bin/markdownlint-cli2
+
+    - name: vale
+      run: ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules}/**' .
