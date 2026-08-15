@@ -1,0 +1,16 @@
+# Go build output
+/backup-git-repos
+/dist/
+
+# Node.js / Bun
+node_modules/
+
+# Vale downloads its style packages rather than committing them. Named
+# individually, never `styles/` wholesale -- that would ignore our own
+# vocabulary along with them.
+styles/Google/
+styles/proselint/
+
+# Local runs
+/config.yaml
+/backups/
