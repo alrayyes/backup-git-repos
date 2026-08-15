@@ -1,0 +1,26 @@
+# Prettier already reads .gitignore, so node_modules is covered. This file is
+# for tracked text Prettier should still keep its hands off.
+
+# Written by release-please from commit messages. The tool owns its layout, and
+# reformatting it here would show up as noise in the next release diff.
+CHANGELOG.md
+
+# Biome owns every file type it supports. Prettier is here to fill the gaps,
+# and the gaps are Markdown and YAML. Listing the rest here means nobody later
+# mistakes Prettier's presence for permission to hand it the JavaScript, and
+# the day Biome ships a YAML formatter this list grows by one line.
+*.json
+*.jsonc
+*.js
+*.mjs
+*.cjs
+*.jsx
+*.ts
+*.mts
+*.cts
+*.tsx
+*.css
+*.graphql
+
+# Go's own formatter owns these, and it is not negotiable.
+*.go

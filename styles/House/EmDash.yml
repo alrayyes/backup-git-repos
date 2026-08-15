@@ -1,0 +1,6 @@
+extends: occurrence
+message: "More than one em-dash in a paragraph. Use a full stop for the others."
+level: warning
+scope: paragraph
+max: 1
+token: "—"

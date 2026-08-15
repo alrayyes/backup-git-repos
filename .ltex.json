@@ -1,0 +1,52 @@
+{
+  "ltex.language": "en-GB",
+  "ltex.dictionary": {
+    "en-GB": [
+      "Forgejo",
+      "GitLab",
+      "Gitea",
+      "backup-git-repos",
+      "goreleaser",
+      "golangci-lint",
+      "gofumpt",
+      "goimports",
+      "release-please",
+      "testcontainers",
+      "testcontainers-go",
+      "testify",
+      "cobra",
+      "slog",
+      "errgroup",
+      "bun",
+      "bunx",
+      "lefthook",
+      "commitlint",
+      "markdownlint",
+      "proselint",
+      "ltex-cli-plus",
+      "ltex-ls-plus",
+      "LTeX",
+      "LanguageTool",
+      "Vale",
+      "npm",
+      "lockfile",
+      "config",
+      "repo",
+      "repos",
+      "namespaced",
+      "subgroup",
+      "subgroups",
+      "tarball",
+      "tarballs",
+      "gzipped",
+      "filesystem",
+      "subprocess",
+      "subprocesses",
+      "runtime",
+      "Dependabot"
+    ]
+  },
+  "ltex.disabledRules": {
+    "en-GB": ["PASSIVE_VOICE", "UPPERCASE_SENTENCE_START", "LICENCE_LICENSE_NOUN_SINGULAR"]
+  }
+}

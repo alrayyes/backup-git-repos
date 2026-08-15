@@ -1,0 +1,20 @@
+extends: existence
+message: "'%s' says nothing. Cut it, or write the thing it stands in for."
+level: error
+ignorecase: true
+# A sentence that falls over without one of these wasn't carrying anything.
+tokens:
+  - delve[sd]?
+  - delving
+  - testament
+  - seamless(ly)?
+  - robust(ly|ness)?
+  - revolutioni[sz](e[sd]?|ing)
+  - crucial(ly)?
+  - delighted
+  - game.?changer
+  - cutting.edge
+  - state.of.the.art
+  - effortless(ly)?
+  - unlock(s|ed|ing)? the power
+  - supercharge[sd]?
