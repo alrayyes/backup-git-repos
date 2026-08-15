@@ -16,13 +16,6 @@ branch, every tag, and the same namespace folder structure the forge used. It
 tells archived repositories from active ones, and can back up either set, both,
 or write either out as a `.tar.gz` alongside the mirror.
 
-## Status
-
-This is an early, in-progress build. Mirroring works end to end for both
-Forgejo and GitLab. The `.tar.gz` archive option hasn't landed yet, so
-`--archive` is still design rather than something you can run. This README is
-updated as each piece ships.
-
 ## Features
 
 - Mirrors every branch, tag and ref, not just the default branch
@@ -124,9 +117,9 @@ git clone repo.git restored-repo
 
 ### Flags
 
-- `--config, -c`: path to the YAML config (default
-  `$XDG_CONFIG_HOME/backup-git-repos/config.yaml`)
-- `--dest, -d`: override the destination directory from the config
+- `--config, -c`: path to the YAML config (required)
+- `--dest, -d`: override the destination directory from the config. Required
+  on `run` unless the config sets `dest`
 - `--forge`: repeatable; restrict the run to named forges
 - `--state`: `all` \| `active` \| `archived` — which repositories to mirror
   (default `all`)
@@ -136,9 +129,6 @@ git clone repo.git restored-repo
 - `--concurrency, -j`: repositories mirrored in parallel (default the number
   of CPUs)
 - `--timeout`: per-repository timeout (default `30m`)
-- `--dry-run`: print what would happen, clone nothing
-- `--log-level`, `--log-format`: `debug`\|`info`\|`warn`\|`error`,
-  `text`\|`json`
 
 `backup-git-repos list` runs the same discovery and filtering without cloning
 anything, which is the fast way to check a config is picking up what you

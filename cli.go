@@ -28,11 +28,32 @@ func ParseState(s string) (State, error) {
 	}
 }
 
+// ErrBadArchive means --archive wasn't one of none, all, active, or archived.
+var ErrBadArchive = errors.New("archive must be one of: none, all, active, archived")
+
+// ParseArchive parses a --archive flag value.
+func ParseArchive(s string) (ArchiveSelection, error) {
+	switch s {
+	case "", "none":
+		return ArchiveNone, nil
+	case "all":
+		return ArchiveAll, nil
+	case "active":
+		return ArchiveActive, nil
+	case "archived":
+		return ArchiveArchived, nil
+	default:
+		return 0, fmt.Errorf("%w: got %q", ErrBadArchive, s)
+	}
+}
+
 type cliFlags struct {
 	config      string
 	dest        string
 	forges      []string
 	state       string
+	archive     string
+	archiveDir  string
 	concurrency int
 	timeout     time.Duration
 }
@@ -66,6 +87,8 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 	}
 	addRunFlags(runCmd, &flags)
 	runCmd.Flags().StringVarP(&flags.dest, "dest", "d", "", "backup destination directory (required, or set dest in the config)")
+	runCmd.Flags().StringVar(&flags.archive, "archive", "none", "also write out repositories as tar.gz: none, all, active, or archived")
+	runCmd.Flags().StringVar(&flags.archiveDir, "archive-dir", "", "where archives go (default: <dest>/archive)")
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -104,6 +127,10 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	if err != nil {
 		return err
 	}
+	archive, err := ParseArchive(flags.archive)
+	if err != nil {
+		return err
+	}
 
 	cfg, err := LoadConfig(flags.config)
 	if err != nil {
@@ -118,6 +145,11 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 		return errors.New("--dest is required, or set dest in the config file")
 	}
 
+	archiveDir := flags.archiveDir
+	if archiveDir == "" {
+		archiveDir = filepath.Join(dest, "archive")
+	}
+
 	log := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
 
 	for _, fc := range cfg.Forges {
@@ -125,7 +157,7 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 			continue
 		}
 
-		if err := runForge(cmd, fc, dest, state, flags, newRunner, listOnly, log); err != nil {
+		if err := runForge(cmd, fc, dest, archiveDir, state, archive, flags, newRunner, listOnly, log); err != nil {
 			return err
 		}
 	}
@@ -134,7 +166,8 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 }
 
 func runForge(
-	cmd *cobra.Command, fc ForgeConfig, dest string, state State, flags cliFlags, newRunner NewRunner, listOnly bool, log *slog.Logger,
+	cmd *cobra.Command, fc ForgeConfig, dest, archiveDir string, state State, archive ArchiveSelection,
+	flags cliFlags, newRunner NewRunner, listOnly bool, log *slog.Logger,
 ) error {
 	runner, err := newRunner(fc)
 	if err != nil {
@@ -155,6 +188,8 @@ func runForge(
 	result, err := runner.Run(cmd.Context(), Options{
 		Dest:        filepath.Join(dest, fc.Name),
 		State:       state,
+		Archive:     archive,
+		ArchiveDir:  filepath.Join(archiveDir, fc.Name),
 		Concurrency: flags.concurrency,
 		Timeout:     flags.timeout,
 		Log:         log,
@@ -162,6 +197,7 @@ func runForge(
 	if err != nil {
 		return fmt.Errorf("run %s: %w", fc.Name, err)
 	}
-	cmd.Printf("%s: synced %d, skipped %d, failed %d\n", fc.Name, result.Synced, result.Skipped, result.Failed)
+	cmd.Printf("%s: synced %d, skipped %d, failed %d, archived %d\n",
+		fc.Name, result.Synced, result.Skipped, result.Failed, result.Archived)
 	return nil
 }
