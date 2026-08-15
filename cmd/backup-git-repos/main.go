@@ -12,6 +12,7 @@ import (
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/alrayyes/backup-git-repos/internal/forgejo"
+	"github.com/alrayyes/backup-git-repos/internal/gitlab"
 )
 
 var version = "dev"
@@ -38,6 +39,12 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 	switch fc.Kind {
 	case "forgejo":
 		client, err := forgejo.New(fc.URL, fc.Token)
+		if err != nil {
+			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
+		}
+		return backup.Runner{Lister: client, Mirrorer: backup.Mirror{}, Remoter: client}, nil
+	case "gitlab":
+		client, err := gitlab.New(fc.URL, fc.Token)
 		if err != nil {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
