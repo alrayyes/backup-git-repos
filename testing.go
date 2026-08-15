@@ -106,6 +106,7 @@ func TestBackup(t *testing.T, run TestDriver) {
 	t.Run("keeps the forge folder structure", func(t *testing.T) { keepsTheForgeFolderStructure(t, run) })
 	t.Run("leaves archived repos alone when active only", func(t *testing.T) { leavesArchivedReposAloneWhenActiveOnly(t, run) })
 	t.Run("skips empty repos", func(t *testing.T) { skipsEmptyRepos(t, run) })
+	t.Run("archives only the selected repos", func(t *testing.T) { archivesOnlyTheSelectedRepos(t, run) })
 }
 
 func backsUpActiveRepos(t *testing.T, run TestDriver) {
@@ -137,6 +138,24 @@ func leavesArchivedReposAloneWhenActiveOnly(t *testing.T, run TestDriver) {
 	require.NoError(t, err)
 
 	require.NoFileExists(t, filepath.Join(dest, TestArchivedRepoPath+".git", "HEAD"))
+}
+
+func archivesOnlyTheSelectedRepos(t *testing.T, run TestDriver) {
+	t.Helper()
+	dest := t.TempDir()
+	archiveDir := t.TempDir()
+
+	result, err := run(context.Background(), Options{
+		Dest:       dest,
+		State:      StateAll,
+		Archive:    ArchiveArchived,
+		ArchiveDir: archiveDir,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, result.Archived)
+	require.FileExists(t, filepath.Join(archiveDir, TestArchivedRepoPath+".tar.gz"))
+	require.NoFileExists(t, filepath.Join(archiveDir, TestActiveRepoPath+".tar.gz"))
 }
 
 func skipsEmptyRepos(t *testing.T, run TestDriver) {

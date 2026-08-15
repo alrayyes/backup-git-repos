@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sync/atomic"
 	"time"
@@ -21,10 +22,37 @@ type Remoter interface {
 	Remote(repo Repo) Remote
 }
 
+// ArchiveSelection selects which repositories also get written out as a
+// tar.gz alongside their mirror, in addition to being mirrored.
+type ArchiveSelection int
+
+// The values ArchiveSelection can hold.
+const (
+	ArchiveNone ArchiveSelection = iota
+	ArchiveAll
+	ArchiveActive
+	ArchiveArchived
+)
+
+func (a ArchiveSelection) wants(archived bool) bool {
+	switch a {
+	case ArchiveAll:
+		return true
+	case ArchiveActive:
+		return !archived
+	case ArchiveArchived:
+		return archived
+	default:
+		return false
+	}
+}
+
 // Options configures a Run.
 type Options struct {
 	Dest        string
 	State       State
+	Archive     ArchiveSelection
+	ArchiveDir  string
 	Concurrency int
 	Timeout     time.Duration
 	Log         *slog.Logger
@@ -32,9 +60,10 @@ type Options struct {
 
 // Result reports what a Run did.
 type Result struct {
-	Synced  int
-	Skipped int
-	Failed  int
+	Synced   int
+	Skipped  int
+	Failed   int
+	Archived int
 }
 
 // Runner backs up one forge: it lists repositories, then mirrors each one
@@ -68,7 +97,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		concurrency = 1
 	}
 
-	var synced, skipped, failed atomic.Int64
+	var synced, skipped, failed, archived atomic.Int64
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
@@ -95,6 +124,17 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 				return nil
 			}
 			synced.Add(1)
+
+			if opts.Archive.wants(repo.Archived) {
+				archiveOut := filepath.Join(opts.ArchiveDir, filepath.FromSlash(repo.Path)+".tar.gz")
+				if err := archiveRepo(dir, archiveOut); err != nil {
+					log.Error("archive failed", "path", repo.Path, "error", err)
+					failed.Add(1)
+					return nil
+				}
+				archived.Add(1)
+			}
+
 			return nil
 		})
 	}
@@ -102,8 +142,19 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 	_ = g.Wait()
 
 	return Result{
-		Synced:  int(synced.Load()),
-		Skipped: int(skipped.Load()),
-		Failed:  int(failed.Load()),
+		Synced:   int(synced.Load()),
+		Skipped:  int(skipped.Load()),
+		Failed:   int(failed.Load()),
+		Archived: int(archived.Load()),
 	}, nil
+}
+
+// archiveRepo creates the archive's parent directory before writing to it --
+// the destination tree mirrors the forge's namespace, so a repo two levels
+// deep needs the same nesting created in the archive directory too.
+func archiveRepo(dir, out string) error {
+	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+		return err
+	}
+	return Archive(dir, out)
 }

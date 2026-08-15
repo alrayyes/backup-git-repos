@@ -57,3 +57,13 @@ func TestCLIRunRejectsUnknownState(t *testing.T) {
 
 	require.ErrorIs(t, err, backup.ErrBadState)
 }
+
+func TestCLIRunRejectsUnknownArchive(t *testing.T) {
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--config", "config.yaml", "--dest", "/tmp/dest", "--archive", "bogus"})
+
+	err := root.Execute()
+
+	require.ErrorIs(t, err, backup.ErrBadArchive)
+}
