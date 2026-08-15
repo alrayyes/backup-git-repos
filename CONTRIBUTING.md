@@ -61,7 +61,7 @@ push.
 
 The contract suite lives once, in `lister_contract_test.go`, and runs against
 the fake, the Forgejo adapter and the GitLab adapter alike — the thing that
-keeps a hand-written fake honest is a real dependency checked against the same
+keeps a handwritten fake honest is a real dependency checked against the same
 assertions. When the GitLab fixtures drift from what the live API actually
 returns, the nightly run's `-update` flag refreshes them and the diff shows
 what changed.
