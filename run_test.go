@@ -30,7 +30,7 @@ func (fakeRemoter) Remote(r backup.Repo) backup.Remote {
 }
 
 func TestRun(t *testing.T) {
-	testBackup(t, func(ctx context.Context, opts backup.Options) (backup.Result, error) {
+	backup.TestBackup(t, func(ctx context.Context, opts backup.Options) (backup.Result, error) {
 		runner := backup.Runner{
 			Lister:   newFakeLister(),
 			Mirrorer: fakeMirrorer{},

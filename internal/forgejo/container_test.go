@@ -1,6 +1,6 @@
 //go:build integration
 
-package backup_test
+package forgejo_test
 
 import (
 	"context"
@@ -9,17 +9,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/forgejo"
+	tcforgejo "github.com/testcontainers/testcontainers-go/modules/forgejo"
 )
 
 // Pinned by digest as well as tag: the module's own examples pin :11, so this
 // is the first thing to fail if 16.0.2 behaves differently.
-const forgejoImage = "codeberg.org/forgejo/forgejo:16.0.2@sha256:2fdfe28b5c68f82f49580e227b84e2afb43af0250e0631a54a386ef3b1d9b759"
+const image = "codeberg.org/forgejo/forgejo:16.0.2@sha256:2fdfe28b5c68f82f49580e227b84e2afb43af0250e0631a54a386ef3b1d9b759"
 
-func TestForgejoContainerBoots(t *testing.T) {
+func TestContainerBoots(t *testing.T) {
 	ctx := context.Background()
 
-	ctr, err := forgejo.Run(ctx, forgejoImage)
+	ctr, err := tcforgejo.Run(ctx, image)
 	testcontainers.CleanupContainer(t, ctr)
 	require.NoError(t, err)
 

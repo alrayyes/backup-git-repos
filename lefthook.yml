@@ -20,9 +20,12 @@ pre-commit:
       stage_fixed: true
 
     # JSON and JSONC only. Go belongs to golangci-lint and Biome has no business
-    # there.
+    # there. testdata/ is excluded here too, not just in biome.json: handed an
+    # explicit staged-file list that's entirely ignored paths, Biome's CLI
+    # errors out instead of skipping the way a glob scan does.
     - name: biome
       glob: "*.{json,jsonc}"
+      exclude: "**/testdata/**"
       run: ./node_modules/.bin/biome check --write {staged_files}
       stage_fixed: true
 

@@ -18,10 +18,10 @@ or write either out as a `.tar.gz` alongside the mirror.
 
 ## Status
 
-This is an early, in-progress build. The pieces land in order: Forgejo support
-first, then GitLab, then the archive option. This README is updated as each
-one ships. Until the `run` command exists, treat the CLI surface below as the
-design, not something you can run yet.
+This is an early, in-progress build. Mirroring works end to end for both
+Forgejo and GitLab. The `.tar.gz` archive option hasn't landed yet, so
+`--archive` is still design rather than something you can run. This README is
+updated as each piece ships.
 
 ## Features
 

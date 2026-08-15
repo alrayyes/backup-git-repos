@@ -1,0 +1,15 @@
+[
+  {
+    "id": 2,
+    "name": "archived-repo",
+    "path": "archived-repo",
+    "path_with_namespace": "team/archived-repo",
+    "default_branch": "main",
+    "http_url_to_repo": "http://localhost/team/archived-repo.git",
+    "web_url": "http://localhost/team/archived-repo",
+    "archived": true,
+    "empty_repo": false,
+    "visibility": "private",
+    "created_at": "2026-08-15T08:03:18.000Z"
+  }
+]
