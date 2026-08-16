@@ -43,6 +43,7 @@ type Config struct {
 var knownForgeKinds = map[string]bool{
 	"forgejo": true,
 	"gitlab":  true,
+	"github":  true,
 }
 
 // LoadConfig reads and validates the config file at path: every forge's

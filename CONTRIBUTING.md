@@ -52,19 +52,25 @@ push.
   fake. No network, no containers. This is what `pre-push` runs.
 - `go test -tags=integration -race ./...` — boots a real Forgejo container
   (seconds, via the official `testcontainers-go` module) and exercises the
-  full mirror-and-refresh path against it. The GitLab half of this lane is
-  served from recorded API fixtures in `testdata/`, not a live GitLab. CI runs
-  this on every pull request.
+  full mirror-and-refresh path against it. The GitLab and GitHub halves of
+  this lane are served from recorded API fixtures in `testdata/`, not a live
+  GitLab or GitHub.com. CI runs this on every pull request.
 - `go test -tags='integration gitlab' -run GitLab ./...` — boots a real
   GitLab CE container, which wants several minutes and several gigabytes. CI
   runs this nightly and on `workflow_dispatch`, never on a pull request.
 
-The contract suite lives once, in `lister_contract_test.go`, and runs against
-the fake, the Forgejo adapter and the GitLab adapter alike — the thing that
-keeps a handwritten fake honest is a real dependency checked against the same
-assertions. When the GitLab fixtures drift from what the live API actually
-returns, the nightly run's `-update` flag refreshes them and the diff shows
-what changed.
+GitHub.com has no self-hosted equivalent to boot, so its recorded fixtures in
+`internal/github/testdata/` are hand-authored against GitHub's REST API
+documentation rather than captured from a live instance the way GitLab's
+`-update` flag does. Keep them in sync by hand if that API's response shape
+changes.
+
+The contract suite lives once, in `testing.go`, and runs against the fake,
+the Forgejo adapter, the GitLab adapter, and the GitHub adapter alike — the
+thing that keeps a handwritten fake honest is a real dependency checked
+against the same assertions. When the GitLab fixtures drift from what the
+live API actually returns, the nightly run's `-update` flag refreshes them
+and the diff shows what changed.
 
 Acceptance tests keep the specification separate from the driver: what the
 tool does, in domain terms, doesn't know whether it's talking to a fake or a
