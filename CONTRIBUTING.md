@@ -61,9 +61,9 @@ push.
 
 GitHub.com has no self-hosted equivalent to boot, so its recorded fixtures in
 `internal/github/testdata/` are hand-authored against GitHub's REST API
-documentation rather than captured from a live instance with an `-update`
-flag the way GitLab's are. Keep them in sync by hand if that API's response
-shape changes.
+documentation rather than captured from a live instance the way GitLab's
+`-update` flag does. Keep them in sync by hand if that API's response shape
+changes.
 
 The contract suite lives once, in `testing.go`, and runs against the fake,
 the Forgejo adapter, the GitLab adapter, and the GitHub adapter alike — the
