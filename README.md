@@ -7,8 +7,8 @@
 [![Release](https://img.shields.io/github/v/release/alrayyes/backup-git-repos)](https://github.com/alrayyes/backup-git-repos/releases)
 [![Licence](https://img.shields.io/github/license/alrayyes/backup-git-repos)](LICENSE)
 
-Backs up every repository on a self-hosted GitLab or Forgejo instance to a
-local, restorable copy.
+Backs up every repository on a self-hosted GitLab or Forgejo instance, or a
+GitHub.com account, to a local, restorable copy.
 
 A backup only counts if it survives the forge going away, so what
 `backup-git-repos` keeps is a bare mirror clone of each repository: every
@@ -23,8 +23,8 @@ or write either out as a `.tar.gz` alongside the mirror.
 - Filters by archived, active, or all repositories
 - Refreshes existing mirrors incrementally instead of re-cloning
 - Optionally writes archived, active, or all repositories out as `.tar.gz`
-- Backs up several forges in one run: GitLab instances, Forgejo instances, or
-  a mix of both
+- Backs up several forges in one run: GitLab instances, Forgejo instances,
+  GitHub.com accounts, or a mix
 
 ## Requirements
 
@@ -77,12 +77,21 @@ forges:
     kind: forgejo
     url: https://git.example.org
     token_env: HOME_FORGEJO_TOKEN
+  - name: personal
+    kind: github
+    token_env: PERSONAL_GITHUB_TOKEN
 ```
 
 ```bash
 export WORK_GITLAB_TOKEN=glpat-...
 export HOME_FORGEJO_TOKEN=...
+export PERSONAL_GITHUB_TOKEN=ghp_...
 ```
+
+`url` is only for a self-hosted forge; GitHub.com is the one instance, so a
+`github` entry never sets it. Its token needs the classic `repo` scope, or a
+fine-grained token with read access to contents and metadata on every
+repository you want backed up.
 
 ## Usage
 

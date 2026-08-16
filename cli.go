@@ -72,7 +72,7 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 
 	root := &cobra.Command{
 		Use:           "backup-git-repos",
-		Short:         "Back up git repositories from self-hosted GitLab and Forgejo",
+		Short:         "Back up git repositories from GitLab, Forgejo, and GitHub",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
