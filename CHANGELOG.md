@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/alrayyes/backup-git-repos/compare/v1.0.0...v1.1.0) (2026-08-16)
+
+
+### Features
+
+* back up a GitHub.com account ([#12](https://github.com/alrayyes/backup-git-repos/issues/12)) ([251c999](https://github.com/alrayyes/backup-git-repos/commit/251c99934d1c66ea825af4b3cbbbf736dbb6c5dc))
+
 ## 1.0.0 (2026-08-15)
 
 
