@@ -24,9 +24,15 @@ const gitlabShmSize = 256 * 1024 * 1024
 const image = "gitlab/gitlab-ce:19.2.2-ce.0@sha256:f7cf5de6f453623cfda9b7cc3708b1a29e82ea9be2dfaa91b5d7e7ed9aff9e6c"
 
 // omnibusConfig tunes GitLab CE down for a test box: no bundled monitoring
-// stack, single Puma process, a modest Sidekiq concurrency. grafana and
-// mattermost keys are deliberately absent -- both were removed from the
-// Linux package in 19.0, and setting either aborts reconfigure outright.
+// stack, single Puma process, a modest Sidekiq concurrency, and every
+// optional subsystem this package's tests never touch turned off. The
+// client only lists and mirrors repositories over the API and git-http, so
+// CI/CD-adjacent services (registry, Pages, KAS), the individual metrics
+// exporters (separate flags from prometheus_monitoring above them), mail
+// and usage/gravatar network calls all just cost reconfigure and boot time
+// here. grafana and mattermost keys are deliberately absent -- both were
+// removed from the Linux package in 19.0, and setting either aborts
+// reconfigure outright.
 //
 // external_url carries no port. Setting it to the host-mapped port (as a
 // first attempt at this harness did) makes nginx listen on that port
@@ -42,7 +48,17 @@ const omnibusConfig = "external_url 'http://localhost'; " +
 	"alertmanager['enable'] = false; " +
 	"gitlab_kas['enable'] = false; " +
 	"registry['enable'] = false; " +
-	"gitlab_pages['enable'] = false;"
+	"gitlab_pages['enable'] = false; " +
+	"node_exporter['enable'] = false; " +
+	"redis_exporter['enable'] = false; " +
+	"postgres_exporter['enable'] = false; " +
+	"gitlab_exporter['enable'] = false; " +
+	"logrotate['enable'] = false; " +
+	"mailroom['enable'] = false; " +
+	"gitlab_rails['smtp_enable'] = false; " +
+	"gitlab_rails['gitlab_email_enabled'] = false; " +
+	"gitlab_rails['usage_ping_enabled'] = false; " +
+	"gitlab_rails['gravatar_enabled'] = false;"
 
 func TestContainerBoots(t *testing.T) {
 	ctx := context.Background()
