@@ -1,0 +1,6 @@
+# cmd/backup-git-repos/main.go is the composition root - it wires signal
+# handling, the concrete forge adapters and cobra together, then hands off.
+# There's no behaviour in it that the root package's and internal/*'s own
+# tests don't already cover.
+ignore:
+  - "cmd/backup-git-repos/main.go"

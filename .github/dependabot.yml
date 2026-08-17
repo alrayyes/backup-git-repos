@@ -1,26 +1,28 @@
 version: 2
 updates:
-  # GitHub Actions
+  # GitHub Actions. Changes the pipeline, not the artifact - releasing for this is noise.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
+      prefix: "ci"
+      prefix-development: "ci"
       include: "scope"
 
-  # Go modules
+  # Go modules. The tool itself is Go, so this ships in the binary - fix: cuts a patch
+  # release the same way any other fix does, security-relevant or not.
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
+      prefix: "fix"
+      prefix-development: "fix"
       include: "scope"
 
-  # npm/bun dependencies
+  # npm/bun dependencies. Tooling only - package.json exists for commitlint/biome/etc,
+  # nothing here ships in the built binary.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:

@@ -1,0 +1,43 @@
+# Dependabot has no built-in `automerge: true` the way Renovate does — see
+# releases.md's "Dependency bots" section. This is that mechanism for a
+# GitHub-primary repo: gate on the actor, wait for the same checks every
+# other pull request waits for, then arm auto-merge the same way a human
+# would from the UI.
+#
+# pull_request, not pull_request_target: Dependabot's pull requests come
+# from a branch on this repo, never a fork, so there's no untrusted checkout
+# to guard against. GitHub grants the default GITHUB_TOKEN elevated
+# permissions for pull_request events actor'd by dependabot[bot]
+# specifically — pull_request_target would trade that away for nothing.
+name: dependabot-auto-merge
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ci.yml is the gate; this only arms the merge and lets GitHub wait
+      # for that gate itself, rather than polling it from inside the job.
+      # Patch and minor only — dependabot.yml already groups those two
+      # together for the same reason. A major stays a pull request someone
+      # reads, the same as any other breaking change would.
+      - name: Enable auto-merge for patch and minor updates
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
