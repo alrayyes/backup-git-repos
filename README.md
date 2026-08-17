@@ -1,6 +1,7 @@
 # backup-git-repos
 
 [![Test](https://github.com/alrayyes/backup-git-repos/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/alrayyes/backup-git-repos/actions/workflows/test.yml)
+[![Codecov](https://codecov.io/gh/alrayyes/backup-git-repos/graph/badge.svg)](https://codecov.io/gh/alrayyes/backup-git-repos)
 [![Lint](https://github.com/alrayyes/backup-git-repos/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/alrayyes/backup-git-repos/actions/workflows/lint.yml)
 [![Prose](https://github.com/alrayyes/backup-git-repos/actions/workflows/prose.yml/badge.svg?branch=main)](https://github.com/alrayyes/backup-git-repos/actions/workflows/prose.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/alrayyes/backup-git-repos.svg)](https://pkg.go.dev/github.com/alrayyes/backup-git-repos)
