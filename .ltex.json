@@ -5,6 +5,7 @@
       "Forgejo",
       "GitLab",
       "Gitea",
+      "Codecov",
       "backup-git-repos",
       "goreleaser",
       "golangci-lint",
