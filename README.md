@@ -101,9 +101,19 @@ export PERSONAL_GITHUB_TOKEN=ghp_...
 ```
 
 `url` is only for a self-hosted forge; GitHub.com is the one instance, so a
-`github` entry never sets it. Its token needs the classic `repo` scope, or a
-fine-grained token with read access to contents and metadata on every
-repository you want backed up.
+`github` entry never sets it.
+
+Each kind's token needs enough to list and clone every repository you want
+backed up, and nothing more:
+
+- **GitLab**: a personal access token with the `read_api` and
+  `read_repository` scopes. `read_api` covers listing projects;
+  `read_repository` covers the git clone itself.
+- **Forgejo**: a token with the `read:repository` scope (fine-grained
+  tokens) or, on a version old enough to only offer full-access tokens, one
+  scoped as narrowly as your Forgejo instance allows.
+- **GitHub**: the classic `repo` scope, or a fine-grained token with read
+  access to contents and metadata on every repository you want backed up.
 
 A forge entry can set `token` instead of `token_env`: the literal token,
 right in the file, if you'd rather not manage a matching environment
