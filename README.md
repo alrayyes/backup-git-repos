@@ -142,6 +142,11 @@ backed up, and nothing more:
   scoped as narrowly as your Forgejo instance allows.
 - **GitHub**: the classic `repo` scope, or a fine-grained token with read
   access to contents and metadata on every repository you want backed up.
+  For a classic token, `run` and `list` check the scopes GitHub reports
+  back and fail fast if `repo` is missing, rather than silently backing up
+  only the public repositories. GitHub gives no equivalent signal for a
+  fine-grained token, so that check can't run against one -- double-check a
+  fine-grained token's repository access is set to what you expect.
 
 A forge entry can set `token` instead of `token_env`: the literal token,
 right in the file, if you'd rather not manage a matching environment
