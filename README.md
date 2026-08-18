@@ -36,7 +36,7 @@ or write either out as a `.tar.gz` alongside the mirror.
 clone` produces anywhere else.
 - A personal access token for each forge you back up, with read access to
   every repository you want. See [Configuration](#configuration) for where it
-  goes — never in the config file itself.
+  goes.
 - Somewhere to write the backup tree. It grows to roughly the size of every
   repository you're backing up, twice over if you also enable `.tar.gz`
   archives.
@@ -63,9 +63,10 @@ release](https://github.com/alrayyes/backup-git-repos/releases).
 
 ## Configuration
 
-List every forge in a YAML file. A token never goes in the file, only the
-name of the environment variable holding it — the tool reads the variable at
-startup and fails before touching the network if it's unset.
+List every forge in a YAML file. The recommended form keeps a token out of
+the file, naming the environment variable holding it instead — the tool
+reads the variable at startup and fails before touching the network if it's
+unset. A literal token in the file is also supported; see below.
 
 `backup-git-repos config init` writes a starter file to get from a blank
 directory to something you can edit — `$XDG_CONFIG_HOME/backup-git-repos/config.yaml`
@@ -103,6 +104,14 @@ export PERSONAL_GITHUB_TOKEN=ghp_...
 `github` entry never sets it. Its token needs the classic `repo` scope, or a
 fine-grained token with read access to contents and metadata on every
 repository you want backed up.
+
+A forge entry can set `token` instead of `token_env`: the literal token,
+right in the file, if you'd rather not manage a matching environment
+variable for it. Setting both on the same entry is a config error, not a
+silent pick-one. `token_env` stays the recommended form — whatever backs up
+this tool's own backup tree (a git remote, a sync job, a snapshot) picks up
+a `token` in the file the same as any other line in it, so treat a config
+carrying one as a secret: `chmod 600` it, and don't check it in.
 
 ## Usage
 
