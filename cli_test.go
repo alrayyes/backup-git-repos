@@ -84,6 +84,98 @@ func TestCLIRunPrefersExplicitConfigOverDefaultPath(t *testing.T) {
 	require.NoError(t, root.Execute())
 }
 
+// neverSyncMirrorer fails the test if Sync is ever called -- a dry run must
+// never touch git or disk.
+type neverSyncMirrorer struct{ t *testing.T }
+
+func (m neverSyncMirrorer) Sync(context.Context, backup.Remote, string) error {
+	m.t.Fatal("Sync should not have been called during a dry run")
+	return nil
+}
+
+func newDryRunRunner(t *testing.T) backup.NewRunner {
+	return func(backup.ForgeConfig) (backup.Runner, error) {
+		return backup.Runner{
+			Lister:   newFakeLister(),
+			Mirrorer: neverSyncMirrorer{t: t},
+			Remoter:  fakeRemoter{},
+		}, nil
+	}
+}
+
+func TestCLIRunDryRunReportsCloneForNewRepos(t *testing.T) {
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	dest := t.TempDir()
+
+	var out bytes.Buffer
+	root := backup.NewRootCommand("test", newDryRunRunner(t))
+	root.SetOut(&out)
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", dest, "--dry-run"})
+
+	require.NoError(t, root.Execute())
+
+	require.Contains(t, out.String(), "home/"+backup.TestActiveRepoPath+": clone")
+	require.Contains(t, out.String(), "home/"+backup.TestEmptyRepoPath+": skip (empty)")
+	require.NoDirExists(t, filepath.Join(dest, "home", backup.TestActiveRepoPath+".git"))
+}
+
+func TestCLIRunDryRunReportsUpdateForExistingMirror(t *testing.T) {
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	dest := t.TempDir()
+
+	mirrorDir := filepath.Join(dest, "home", backup.TestActiveRepoPath+".git")
+	require.NoError(t, os.MkdirAll(mirrorDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(mirrorDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644))
+
+	var out bytes.Buffer
+	root := backup.NewRootCommand("test", newDryRunRunner(t))
+	root.SetOut(&out)
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", dest, "--dry-run"})
+
+	require.NoError(t, root.Execute())
+
+	require.Contains(t, out.String(), "home/"+backup.TestActiveRepoPath+": update")
+}
+
+func TestCLIRunDryRunFlagsArchiveSelectionWithoutWriting(t *testing.T) {
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	dest := t.TempDir()
+	archiveDir := t.TempDir()
+
+	var out bytes.Buffer
+	root := backup.NewRootCommand("test", newDryRunRunner(t))
+	root.SetOut(&out)
+	root.SetArgs([]string{
+		"run", "--config", cfgPath, "--dest", dest, "--dry-run",
+		"--archive", "all", "--archive-dir", archiveDir,
+	})
+
+	require.NoError(t, root.Execute())
+
+	require.Contains(t, out.String(), "home/"+backup.TestActiveRepoPath+": clone, archive")
+	require.NoFileExists(t, filepath.Join(archiveDir, "home", backup.TestActiveRepoPath+".tar.gz"))
+}
+
+func TestCLIRunDryRunPrintsPreviewSummary(t *testing.T) {
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	dest := t.TempDir()
+
+	var out bytes.Buffer
+	root := backup.NewRootCommand("test", newDryRunRunner(t))
+	root.SetOut(&out)
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", dest, "--dry-run", "--archive", "archived"})
+
+	require.NoError(t, root.Execute())
+
+	// newFakeLister seeds 2 non-empty repos (1 active, 1 archived) and 1
+	// empty one; --archive archived selects just the archived one.
+	require.Contains(t, out.String(), "home: would sync 2, skip 1, archive 1 (dry run)")
+}
+
 func TestCLIRunRequiresDest(t *testing.T) {
 	path := writeConfig(t, configWithNoDest)
 

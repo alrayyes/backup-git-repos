@@ -230,6 +230,10 @@ git clone repo.git restored-repo
 - `--timeout`: per-repository timeout (default `30m`)
 - `--verbose, -v`: log each repository as it starts mirroring and archiving,
   not just failures and the final summary
+- `--dry-run`: print what the run would do -- `clone` or `update` per
+  repository, plus `archive` where `--archive` selects it -- without
+  touching git or writing anything. Still needs `--dest`: telling clone
+  from update means checking what's already on disk
 
 `run` also prints a live `<forge>: done/total` progress line to stderr while
 it works, redrawn in place — only when stderr is a terminal, since a
@@ -238,7 +242,8 @@ file or CI log.
 
 `backup-git-repos list` runs the same discovery and filtering without cloning
 anything, which is the fast way to check a config is picking up what you
-expect.
+expect. `run --dry-run` goes a step further: same idea, but it also says
+what each repository would do once `--dest` is factored in.
 
 `backup-git-repos config init [--force]` writes the starter config described
 under [Configuration](#configuration).
