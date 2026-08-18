@@ -93,10 +93,12 @@ version, and published alongside every release at
 
 ## Configuration
 
-List every forge in a YAML file. The recommended form keeps a token out of
-the file, naming the environment variable holding it instead — the tool
-reads the variable at startup and fails before touching the network if it's
-unset. A literal token in the file is also supported; see below.
+List every forge in a YAML file, the token included. That's the default
+and recommended form: paste the token straight into `token`, and there's
+nothing else to wire up before `run` works. Treat a config carrying one as
+a secret, the same care you'd give any file with credentials in it —
+`chmod 600` it, and don't check it in. If you'd rather keep the token out
+of the file entirely, `token_env` is the opt-in for that; see below.
 
 `backup-git-repos config init` writes a starter file to get from a blank
 directory to something you can edit — `$XDG_CONFIG_HOME/backup-git-repos/config.yaml`
@@ -120,20 +122,14 @@ forges:
   - name: work # becomes the top-level folder for this forge's repos
     kind: gitlab
     url: https://gitlab.example.com
-    token_env: WORK_GITLAB_TOKEN
+    token: glpat-...
   - name: home
     kind: forgejo
     url: https://git.example.org
-    token_env: HOME_FORGEJO_TOKEN
+    token: ...
   - name: personal
     kind: github
-    token_env: PERSONAL_GITHUB_TOKEN
-```
-
-```bash
-export WORK_GITLAB_TOKEN=glpat-...
-export HOME_FORGEJO_TOKEN=...
-export PERSONAL_GITHUB_TOKEN=ghp_...
+    token: ghp_...
 ```
 
 `url` is only for a self-hosted forge; GitHub.com is the one instance, so a
@@ -162,13 +158,25 @@ listing and mirroring — there's no point re-backing-up content that
 already lives at its real source elsewhere. Off by default; other kinds
 ignore the field.
 
-A forge entry can set `token` instead of `token_env`: the literal token,
-right in the file, if you'd rather not manage a matching environment
-variable for it. Setting both on the same entry is a config error, not a
-silent pick-one. `token_env` stays the recommended form — whatever backs up
-this tool's own backup tree (a git remote, a sync job, a snapshot) picks up
-a `token` in the file the same as any other line in it, so treat a config
-carrying one as a secret: `chmod 600` it, and don't check it in.
+A forge entry can set `token_env` instead of `token`: the name of an
+environment variable holding the token, if you'd rather keep it out of the
+file — the tool reads the variable at startup and fails before touching
+the network if it's unset. Setting both on the same entry is a config
+error, not a silent pick-one. Reach for it when whatever backs up this
+tool's own backup tree (a git remote, a sync job, a snapshot) would
+otherwise pick up a `token` in the file the same as any other line in it:
+
+```yaml
+forges:
+  - name: work
+    kind: gitlab
+    url: https://gitlab.example.com
+    token_env: WORK_GITLAB_TOKEN
+```
+
+```bash
+export WORK_GITLAB_TOKEN=glpat-...
+```
 
 ## Usage
 
