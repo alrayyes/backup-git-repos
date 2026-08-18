@@ -32,6 +32,23 @@ func (fakeRemoter) Remote(r backup.Repo) backup.Remote {
 	return backup.Remote{CloneURL: "fake://" + r.Path}
 }
 
+// parentCheckingMirrorer requires dir's parent to already exist, the way a
+// real `git clone --mirror` does -- it creates dir itself (the clone
+// target) but never its leading directories, so a test using it fails the
+// same way a race in git's own leading-directory creation would if Run
+// stopped pre-creating the parent.
+type parentCheckingMirrorer struct{}
+
+func (parentCheckingMirrorer) Sync(_ context.Context, _ backup.Remote, dir string) error {
+	if _, err := os.Stat(filepath.Dir(dir)); err != nil {
+		return fmt.Errorf("parent of %s does not exist yet: %w", dir, err)
+	}
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+}
+
 func TestRun(t *testing.T) {
 	backup.TestBackup(t, func(ctx context.Context, opts backup.Options) (backup.Result, error) {
 		runner := backup.Runner{
@@ -168,6 +185,35 @@ func TestRunReportsProgress(t *testing.T) {
 	for _, c := range calls {
 		require.Equal(t, 3, c[1])
 	}
+}
+
+// nestedRepoLister lists a single repository several namespace levels deep,
+// none of which exist yet under any Dest a test points it at.
+type nestedRepoLister struct{}
+
+func (nestedRepoLister) ListRepos(_ context.Context, _ backup.State) ([]backup.Repo, error) {
+	return []backup.Repo{{Path: "org/team/subteam/repo"}}, nil
+}
+
+// TestRunCreatesDestParentBeforeMirroring guards against #48: Run used to
+// hand Mirrorer.Sync a destination whose parent directories didn't exist
+// yet and rely on git's own leading-directory creation, which raced under
+// concurrent clones sharing a parent and failed with "could not create
+// leading directories" well into a run.
+func TestRunCreatesDestParentBeforeMirroring(t *testing.T) {
+	runner := backup.Runner{
+		Lister:   nestedRepoLister{},
+		Mirrorer: parentCheckingMirrorer{},
+		Remoter:  fakeRemoter{},
+	}
+
+	result, err := runner.Run(context.Background(), backup.Options{
+		Dest:  t.TempDir(),
+		State: backup.StateAll,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Synced)
+	require.Zero(t, result.Failed)
 }
 
 func TestRunTimeout(t *testing.T) {
