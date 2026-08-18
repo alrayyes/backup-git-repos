@@ -54,6 +54,39 @@ forges:
 	require.ErrorIs(t, err, backup.ErrMissingToken)
 }
 
+func TestLoadConfigUsesLiteralToken(t *testing.T) {
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token: literal-secret
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.Equal(t, "literal-secret", cfg.Forges[0].Token)
+}
+
+func TestLoadConfigErrorsWhenBothTokenAndTokenEnvSet(t *testing.T) {
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token: literal-secret
+    token_env: TEST_FORGEJO_TOKEN
+`)
+
+	_, err := backup.LoadConfig(path)
+
+	require.ErrorIs(t, err, backup.ErrAmbiguousToken)
+}
+
 func TestLoadConfigErrorsOnUnknownKind(t *testing.T) {
 	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
 	path := writeConfig(t, `
