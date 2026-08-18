@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/alrayyes/backup-git-repos/compare/v1.2.0...v1.3.0) (2026-08-18)
+
+
+### Features
+
+* publish a multi-arch container image to GHCR on release ([#43](https://github.com/alrayyes/backup-git-repos/issues/43)) ([5bed29b](https://github.com/alrayyes/backup-git-repos/commit/5bed29b501d859b0ac66a5505d7c025dc90d9b11))
+
+
+### Bug Fixes
+
+* run the container image as non-root, lint it with hadolint ([#45](https://github.com/alrayyes/backup-git-repos/issues/45)) ([51e7d68](https://github.com/alrayyes/backup-git-repos/commit/51e7d685c867a9c8aaf8c8923ea0e7b5a0549d9c))
+
 ## [1.2.0](https://github.com/alrayyes/backup-git-repos/compare/v1.1.0...v1.2.0) (2026-08-18)
 
 
