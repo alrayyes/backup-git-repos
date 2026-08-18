@@ -60,6 +60,7 @@ type cliFlags struct {
 	concurrency int
 	timeout     time.Duration
 	verbose     bool
+	dryRun      bool
 }
 
 // NewRunner builds the Runner for a configured forge. Implementations live
@@ -95,6 +96,7 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 	runCmd.Flags().StringVar(&flags.archive, "archive", "none", "also write out repositories as tar.gz: none, all, active, or archived")
 	runCmd.Flags().StringVar(&flags.archiveDir, "archive-dir", "", "where archives go (default: <dest>/archive)")
 	runCmd.Flags().BoolVarP(&flags.verbose, "verbose", "v", false, "print per-repository progress as it happens")
+	runCmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "print what a run would do, without cloning or writing anything")
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -261,6 +263,10 @@ func runForge(
 		return nil
 	}
 
+	if flags.dryRun {
+		return dryRunForge(cmd, fc, dest, state, archive, runner)
+	}
+
 	stderr := cmd.ErrOrStderr()
 	result, err := runner.Run(cmd.Context(), Options{
 		Dest:        filepath.Join(dest, fc.Name),
@@ -278,4 +284,54 @@ func runForge(
 	cmd.Printf("%s: synced %d, skipped %d, failed %d, archived %d\n",
 		fc.Name, result.Synced, result.Skipped, result.Failed, result.Archived)
 	return nil
+}
+
+// dryRunForge previews what a real run would do to fc's repositories,
+// without cloning, updating, or archiving anything: for each repository it
+// prints the action a real run would take -- clone, update, or skip for an
+// empty repo -- based only on whether a mirror already exists at its
+// destination on disk, plus whether it would also be archived. The
+// destination's own directory tree is read, never written.
+func dryRunForge(cmd *cobra.Command, fc ForgeConfig, dest string, state State, archive ArchiveSelection, runner Runner) error {
+	repos, err := runner.Lister.ListRepos(cmd.Context(), state)
+	if err != nil {
+		return fmt.Errorf("list %s: %w", fc.Name, err)
+	}
+
+	var synced, skipped, archived int
+	for _, r := range repos {
+		if r.Empty {
+			cmd.Printf("%s/%s: skip (empty)\n", fc.Name, r.Path)
+			skipped++
+			continue
+		}
+
+		wantArchive := archive.wants(r.Archived)
+		line := fc.Name + "/" + r.Path + ": " + dryRunAction(dest, fc.Name, r, wantArchive)
+		if wantArchive {
+			line += ", archive"
+			archived++
+		}
+		cmd.Println(line)
+		synced++
+	}
+
+	cmd.Printf("%s: would sync %d, skip %d, archive %d (dry run)\n", fc.Name, synced, skipped, archived)
+	return nil
+}
+
+// dryRunAction reports "clone" or "update" the same way Mirror.Sync itself
+// decides between them -- except an archived repository selected for
+// archiving always mirrors into a fresh scratch directory in a real run, so
+// it's always "clone" here too, regardless of what's already at dest.
+func dryRunAction(dest, forge string, r Repo, wantArchive bool) string {
+	if r.Archived && wantArchive {
+		return "clone"
+	}
+
+	dir := filepath.Join(dest, forge, filepath.FromSlash(r.Path)+".git")
+	if _, err := os.Stat(filepath.Join(dir, "HEAD")); err == nil {
+		return "update"
+	}
+	return "clone"
 }
