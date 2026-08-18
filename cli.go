@@ -80,7 +80,8 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.PersistentFlags().StringVarP(&flags.config, "config", "c", "", "config file (required)")
+	root.PersistentFlags().StringVarP(&flags.config, "config", "c", "",
+		"config file (default: $XDG_CONFIG_HOME/backup-git-repos/config.yaml)")
 
 	runCmd := &cobra.Command{
 		Use:   "run",
@@ -125,8 +126,9 @@ func addRunFlags(cmd *cobra.Command, flags *cliFlags) {
 }
 
 func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly bool) error {
-	if flags.config == "" {
-		return errors.New("--config is required")
+	configPath, err := resolveConfigPath(flags.config)
+	if err != nil {
+		return err
 	}
 	state, err := ParseState(flags.state)
 	if err != nil {
@@ -137,7 +139,7 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 		return err
 	}
 
-	cfg, err := LoadConfig(flags.config)
+	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
@@ -160,6 +162,25 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	}
 
 	return nil
+}
+
+// resolveConfigPath returns explicit, expanded, if --config was passed,
+// otherwise falls back to defaultConfigPath -- but only when a file
+// actually exists there, so a bare `run` doesn't silently pick up
+// whatever's sitting in $XDG_CONFIG_HOME when the user never asked for it.
+func resolveConfigPath(explicit string) (string, error) {
+	if explicit != "" {
+		return expandHome(explicit)
+	}
+
+	path, err := defaultConfigPath()
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf("--config is required: no config file at the default path %s", path)
+	}
+	return path, nil
 }
 
 // resolveDestPaths applies the --dest/config-file fallback and --archive-dir's

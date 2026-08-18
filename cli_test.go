@@ -3,6 +3,7 @@ package backup_test
 import (
 	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -38,6 +39,49 @@ func TestCLIHelpListsCommands(t *testing.T) {
 
 	require.Contains(t, out.String(), "run")
 	require.Contains(t, out.String(), "list")
+}
+
+func TestCLIRunFallsBackToDefaultConfigPath(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	dir := filepath.Join(xdg, "backup-git-repos")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configWithNoDest), 0o644))
+
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--dest", t.TempDir()})
+
+	require.NoError(t, root.Execute())
+}
+
+func TestCLIRunErrorsWhenNoConfigFlagAndNoDefaultFile(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--dest", t.TempDir()})
+
+	err := root.Execute()
+
+	require.ErrorContains(t, err, "--config")
+	require.ErrorContains(t, err, filepath.Join("backup-git-repos", "config.yaml"))
+}
+
+func TestCLIRunPrefersExplicitConfigOverDefaultPath(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	require.NoError(t, os.MkdirAll(filepath.Join(xdg, "backup-git-repos"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(xdg, "backup-git-repos", "config.yaml"), []byte("dest: /wrong\nforges: []\n"), 0o644))
+
+	explicit := writeConfig(t, configWithNoDest)
+
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--config", explicit, "--dest", t.TempDir()})
+
+	require.NoError(t, root.Execute())
 }
 
 func TestCLIRunRequiresDest(t *testing.T) {

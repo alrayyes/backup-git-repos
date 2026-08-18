@@ -102,6 +102,12 @@ directory to something you can edit — `$XDG_CONFIG_HOME/backup-git-repos/confi
 by default, or wherever `--config`/`-c` names. It refuses to overwrite an
 existing file unless you pass `--force`.
 
+`run` and `list` read from that same default path when you don't pass
+`--config` yourself, so once `config init` has written it, plain
+`backup-git-repos run` is enough. `--config` still wins when you pass it,
+and without it and with nothing at the default path either, the tool exits
+telling you which path it checked.
+
 ```bash
 backup-git-repos config init
 ```
@@ -191,7 +197,10 @@ git clone repo.git restored-repo
 
 ### Flags
 
-- `--config, -c`: path to the YAML config (required)
+- `--config, -c`: path to the YAML config (default:
+  `$XDG_CONFIG_HOME/backup-git-repos/config.yaml`, falling back to
+  `~/.config/backup-git-repos/config.yaml`; required if no file exists at
+  that path)
 - `--dest, -d`: override the destination directory from the config. Required
   on `run` unless the config sets `dest`. A leading `~` (in this flag, in
   `dest` in the config file, or in `--archive-dir`) expands to your home
