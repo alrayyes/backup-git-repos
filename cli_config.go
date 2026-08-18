@@ -74,13 +74,19 @@ func runConfigInit(cmd *cobra.Command, flags cliFlags, force bool) error {
 }
 
 // configInitPath is where `config init` writes: --config/-c if given,
-// otherwise $XDG_CONFIG_HOME/backup-git-repos/config.yaml (os.UserConfigDir
-// already falls back to ~/.config when XDG_CONFIG_HOME isn't set).
+// otherwise defaultConfigPath.
 func configInitPath(flags cliFlags) (string, error) {
 	if flags.config != "" {
 		return expandHome(flags.config)
 	}
+	return defaultConfigPath()
+}
 
+// defaultConfigPath is $XDG_CONFIG_HOME/backup-git-repos/config.yaml
+// (os.UserConfigDir already falls back to ~/.config when XDG_CONFIG_HOME
+// isn't set) -- what `config init` writes by default, and what `run` and
+// `list` fall back to reading when --config isn't passed.
+func defaultConfigPath() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("find config directory: %w", err)
