@@ -48,7 +48,8 @@
       "Dependabot",
       "stdout",
       "stderr",
-      "hadolint"
+      "hadolint",
+      "govulncheck"
     ]
   },
   "ltex.disabledRules": {
