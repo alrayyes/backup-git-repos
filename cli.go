@@ -3,6 +3,7 @@ package backup
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -58,6 +59,7 @@ type cliFlags struct {
 	archiveDir  string
 	concurrency int
 	timeout     time.Duration
+	verbose     bool
 }
 
 // NewRunner builds the Runner for a configured forge. Implementations live
@@ -91,6 +93,7 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 	runCmd.Flags().StringVarP(&flags.dest, "dest", "d", "", "backup destination directory (required, or set dest in the config)")
 	runCmd.Flags().StringVar(&flags.archive, "archive", "none", "also write out repositories as tar.gz: none, all, active, or archived")
 	runCmd.Flags().StringVar(&flags.archiveDir, "archive-dir", "", "where archives go (default: <dest>/archive)")
+	runCmd.Flags().BoolVarP(&flags.verbose, "verbose", "v", false, "print per-repository progress as it happens")
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -139,29 +142,12 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 		return err
 	}
 
-	dest := flags.dest
-	if dest == "" {
-		dest = cfg.Dest
-	}
-	if dest == "" && !listOnly {
-		return errors.New("--dest is required, or set dest in the config file")
-	}
-	dest, err = expandHome(dest)
+	dest, archiveDir, err := resolveDestPaths(flags, cfg, listOnly)
 	if err != nil {
 		return err
 	}
 
-	archiveDir := flags.archiveDir
-	if archiveDir == "" {
-		archiveDir = filepath.Join(dest, "archive")
-	} else {
-		archiveDir, err = expandHome(archiveDir)
-		if err != nil {
-			return err
-		}
-	}
-
-	log := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
+	log := newCLILogger(cmd.ErrOrStderr(), flags.verbose)
 
 	for _, fc := range cfg.Forges {
 		if len(flags.forges) > 0 && !slices.Contains(flags.forges, fc.Name) {
@@ -174,6 +160,44 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	}
 
 	return nil
+}
+
+// resolveDestPaths applies the --dest/config-file fallback and --archive-dir's
+// default of <dest>/archive, expanding a leading "~" in either.
+func resolveDestPaths(flags cliFlags, cfg Config, listOnly bool) (dest, archiveDir string, err error) {
+	dest = flags.dest
+	if dest == "" {
+		dest = cfg.Dest
+	}
+	if dest == "" && !listOnly {
+		return "", "", errors.New("--dest is required, or set dest in the config file")
+	}
+	dest, err = expandHome(dest)
+	if err != nil {
+		return "", "", err
+	}
+
+	archiveDir = flags.archiveDir
+	if archiveDir == "" {
+		archiveDir = filepath.Join(dest, "archive")
+		return dest, archiveDir, nil
+	}
+	archiveDir, err = expandHome(archiveDir)
+	if err != nil {
+		return "", "", err
+	}
+	return dest, archiveDir, nil
+}
+
+// newCLILogger builds the Logger a run reports through: --verbose lowers
+// the level so Run's per-repository slog.Debug lines reach w, otherwise
+// only warnings, failures and the final summary do.
+func newCLILogger(w io.Writer, verbose bool) *slog.Logger {
+	level := slog.LevelInfo
+	if verbose {
+		level = slog.LevelDebug
+	}
+	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: level}))
 }
 
 // expandHome resolves a leading "~" to the current user's home directory,
@@ -216,6 +240,7 @@ func runForge(
 		return nil
 	}
 
+	stderr := cmd.ErrOrStderr()
 	result, err := runner.Run(cmd.Context(), Options{
 		Dest:        filepath.Join(dest, fc.Name),
 		State:       state,
@@ -224,6 +249,7 @@ func runForge(
 		Concurrency: flags.concurrency,
 		Timeout:     flags.timeout,
 		Log:         log,
+		Progress:    newProgressReporter(stderr, fc.Name, isTerminalWriter(stderr)),
 	})
 	if err != nil {
 		return fmt.Errorf("run %s: %w", fc.Name, err)
