@@ -104,9 +104,11 @@ Resulting layout:
 
 ```text
 /srv/backups/git/
-  work/group/subgroup/repo.git/           # bare mirror
+  work/group/subgroup/repo.git/           # bare mirror, active repo
   home/team/repo.git/
   archive/work/group/subgroup/repo.tar.gz # only when --archive is set
+  archive/home/team/old-repo.tar.gz       # archived repo selected by --archive:
+                                           # only the tar.gz, no .git alongside it
 ```
 
 ### Restoring a repository

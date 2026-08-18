@@ -107,6 +107,9 @@ func TestBackup(t *testing.T, run TestDriver) {
 	t.Run("leaves archived repos alone when active only", func(t *testing.T) { leavesArchivedReposAloneWhenActiveOnly(t, run) })
 	t.Run("skips empty repos", func(t *testing.T) { skipsEmptyRepos(t, run) })
 	t.Run("archives only the selected repos", func(t *testing.T) { archivesOnlyTheSelectedRepos(t, run) })
+	t.Run("does not persist a mirror for an archived repo that gets archived", func(t *testing.T) {
+		doesNotPersistMirrorForArchivedRepo(t, run)
+	})
 }
 
 func backsUpActiveRepos(t *testing.T, run TestDriver) {
@@ -156,6 +159,28 @@ func archivesOnlyTheSelectedRepos(t *testing.T, run TestDriver) {
 	require.Equal(t, 1, result.Archived)
 	require.FileExists(t, filepath.Join(archiveDir, TestArchivedRepoPath+".tar.gz"))
 	require.NoFileExists(t, filepath.Join(archiveDir, TestActiveRepoPath+".tar.gz"))
+}
+
+func doesNotPersistMirrorForArchivedRepo(t *testing.T, run TestDriver) {
+	t.Helper()
+	dest := t.TempDir()
+	archiveDir := t.TempDir()
+
+	_, err := run(context.Background(), Options{
+		Dest:       dest,
+		State:      StateAll,
+		Archive:    ArchiveAll,
+		ArchiveDir: archiveDir,
+	})
+	require.NoError(t, err)
+
+	require.FileExists(t, filepath.Join(archiveDir, TestArchivedRepoPath+".tar.gz"))
+	require.NoDirExists(t, filepath.Join(dest, TestArchivedRepoPath+".git"))
+
+	// An active repo still gets both -- it's still being written to, so it
+	// still needs an incrementally updated mirror, not just a snapshot.
+	require.FileExists(t, filepath.Join(dest, TestActiveRepoPath+".git", "HEAD"))
+	require.FileExists(t, filepath.Join(archiveDir, TestActiveRepoPath+".tar.gz"))
 }
 
 func skipsEmptyRepos(t *testing.T, run TestDriver) {

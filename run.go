@@ -118,7 +118,25 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 				defer cancel()
 			}
 
+			wantArchive := opts.Archive.wants(repo.Archived)
+
+			// An archived repository selected for archiving is done
+			// changing, so there's no point keeping an incrementally
+			// updated mirror alongside its tar.gz too -- mirror into a
+			// scratch dir instead of the destination tree, and let it go
+			// with the scratch dir once the archive is written.
 			dir := filepath.Join(opts.Dest, filepath.FromSlash(repo.Path)+".git")
+			if repo.Archived && wantArchive {
+				scratch, err := os.MkdirTemp("", "backup-git-repos-*")
+				if err != nil {
+					log.Error("mirror failed", "path", repo.Path, "error", err)
+					failed.Add(1)
+					return nil
+				}
+				defer func() { _ = os.RemoveAll(scratch) }()
+				dir = filepath.Join(scratch, filepath.Base(dir))
+			}
+
 			if err := r.Mirrorer.Sync(repoCtx, r.Remoter.Remote(repo), dir); err != nil {
 				log.Error("mirror failed", "path", repo.Path, "error", err)
 				failed.Add(1)
@@ -126,7 +144,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 			}
 			synced.Add(1)
 
-			if opts.Archive.wants(repo.Archived) {
+			if wantArchive {
 				archiveOut := filepath.Join(opts.ArchiveDir, filepath.FromSlash(repo.Path)+".tar.gz")
 				if err := archiveRepo(dir, archiveOut); err != nil {
 					log.Error("archive failed", "path", repo.Path, "error", err)
