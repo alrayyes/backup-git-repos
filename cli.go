@@ -243,6 +243,15 @@ func expandHome(path string) (string, error) {
 	return filepath.Join(home, path[2:]), nil
 }
 
+// setLogger hands v the run's logger if it wants one -- v is typically a
+// Lister, Mirrorer, or Remoter, and most don't implement LogSetter at all,
+// which is exactly the common case this is a no-op for.
+func setLogger(v any, log *slog.Logger) {
+	if ls, ok := v.(LogSetter); ok {
+		ls.SetLogger(log)
+	}
+}
+
 func runForge(
 	cmd *cobra.Command, fc ForgeConfig, dest, archiveDir string, state State, archive ArchiveSelection,
 	flags cliFlags, newRunner NewRunner, listOnly bool, log *slog.Logger,
@@ -251,6 +260,9 @@ func runForge(
 	if err != nil {
 		return err
 	}
+	setLogger(runner.Lister, log)
+	setLogger(runner.Mirrorer, log)
+	setLogger(runner.Remoter, log)
 
 	if listOnly {
 		repos, err := runner.Lister.ListRepos(cmd.Context(), state)
