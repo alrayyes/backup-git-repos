@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.2.0](https://github.com/alrayyes/backup-git-repos/compare/v1.1.0...v1.2.0) (2026-08-18)
+
+
+### Features
+
+* add a progress bar and --verbose logging to run ([#41](https://github.com/alrayyes/backup-git-repos/issues/41)) ([0c9b0f3](https://github.com/alrayyes/backup-git-repos/commit/0c9b0f31c330f9930d9511a17991335e97ed5886)), closes [#28](https://github.com/alrayyes/backup-git-repos/issues/28)
+* add config init to write a starter config file ([#39](https://github.com/alrayyes/backup-git-repos/issues/39)) ([87ed249](https://github.com/alrayyes/backup-git-repos/commit/87ed24940cf295f1bcb21628a0ac694d57a9a448)), closes [#26](https://github.com/alrayyes/backup-git-repos/issues/26)
+* support a literal token alongside token_env in the config ([#40](https://github.com/alrayyes/backup-git-repos/issues/40)) ([767753a](https://github.com/alrayyes/backup-git-repos/commit/767753ab100b208965063b4ca63a1614cfd3dac1)), closes [#27](https://github.com/alrayyes/backup-git-repos/issues/27)
+
+
+### Bug Fixes
+
+* **ci:** give the nightly GitLab test suite a 35m timeout ([#24](https://github.com/alrayyes/backup-git-repos/issues/24)) ([540c2a4](https://github.com/alrayyes/backup-git-repos/commit/540c2a493ddeb3a0fff3e240c88e107d6e385e07)), closes [#23](https://github.com/alrayyes/backup-git-repos/issues/23)
+* **ci:** run disk cleanup before Set up Go in nightly GitLab job ([#19](https://github.com/alrayyes/backup-git-repos/issues/19)) ([4421ac8](https://github.com/alrayyes/backup-git-repos/commit/4421ac8a42d56e7a7f152f815027ea3e30f89657))
+* default concurrency to GOMAXPROCS, not 1 ([#36](https://github.com/alrayyes/backup-git-repos/issues/36)) ([5bbed06](https://github.com/alrayyes/backup-git-repos/commit/5bbed069bd757026cb6d1abedb49bebc25a2d005)), closes [#31](https://github.com/alrayyes/backup-git-repos/issues/31)
+* **deps:** bump github.com/stretchr/testify from 1.11.1 to 1.12.0 ([#16](https://github.com/alrayyes/backup-git-repos/issues/16)) ([f49bc3d](https://github.com/alrayyes/backup-git-repos/commit/f49bc3d3f006f25e3516f293eac1c66f3c1092c2))
+* don't persist a git mirror for archived repos that get archived ([#38](https://github.com/alrayyes/backup-git-repos/issues/38)) ([4cdd936](https://github.com/alrayyes/backup-git-repos/commit/4cdd9368fd6d585f657a69f370b57f43b2bd6f87)), closes [#30](https://github.com/alrayyes/backup-git-repos/issues/30)
+* expand ~ in --dest, --archive-dir, and config dest ([#35](https://github.com/alrayyes/backup-git-repos/issues/35)) ([594e727](https://github.com/alrayyes/backup-git-repos/commit/594e7276f5d530e52a59d245ddcad00eac1a3ad2)), closes [#29](https://github.com/alrayyes/backup-git-repos/issues/29)
+* **test:** stop archive test git helpers from leaking hook env into temp repos ([#34](https://github.com/alrayyes/backup-git-repos/issues/34)) ([1707230](https://github.com/alrayyes/backup-git-repos/commit/170723051086ea91527d069b8109ffbb726f35fe)), closes [#33](https://github.com/alrayyes/backup-git-repos/issues/33)
+
+
+### Performance Improvements
+
+* **test:** disable exporters and unused GitLab CE subsystems in nightly fixture ([#22](https://github.com/alrayyes/backup-git-repos/issues/22)) ([079f5eb](https://github.com/alrayyes/backup-git-repos/commit/079f5ebc15710e5b2ab2df85d3275f138b5d8de8))
+
 ## [1.1.0](https://github.com/alrayyes/backup-git-repos/compare/v1.0.0...v1.1.0) (2026-08-16)
 
 
