@@ -61,6 +61,17 @@ go build -o backup-git-repos ./cmd/backup-git-repos
 Released binaries are attached to each [GitHub
 release](https://github.com/alrayyes/backup-git-repos/releases).
 
+Or run the container image, `git` and all — a natural fit for a scheduled job:
+
+```bash
+docker run --rm -v /srv/backups/git:/srv/backups/git -v ./config.yaml:/config.yaml:ro \
+  ghcr.io/alrayyes/backup-git-repos:latest run --config /config.yaml
+```
+
+Images are multi-arch (`linux/amd64`, `linux/arm64`), tagged `latest` and per
+version (`:1.2.0`), and published alongside every release at
+[ghcr.io/alrayyes/backup-git-repos](https://github.com/alrayyes/backup-git-repos/pkgs/container/backup-git-repos).
+
 ## Configuration
 
 List every forge in a YAML file. The recommended form keeps a token out of
