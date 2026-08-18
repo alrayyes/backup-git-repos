@@ -6,13 +6,21 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	backup "github.com/alrayyes/backup-git-repos"
 )
+
+// ErrMissingRepoScope means a classic personal access token's granted
+// scopes don't include "repo". GitHub doesn't error on that -- /user/repos
+// still returns 200 with just the public repositories -- so left unchecked
+// this is a backup that silently never carried anything private.
+var ErrMissingRepoScope = errors.New(`github token is missing the "repo" scope: private repositories would not be listed`)
 
 const (
 	// defaultBaseURL is GitHub.com's own REST API host. A test points
@@ -80,9 +88,14 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 	var repos []backup.Repo
 
 	for page := 1; ; page++ {
-		items, err := c.fetchReposPage(ctx, page)
+		items, scopes, err := c.fetchReposPage(ctx, page)
 		if err != nil {
 			return nil, err
+		}
+		if page == 1 {
+			if err := checkRepoScope(scopes); err != nil {
+				return nil, err
+			}
 		}
 		if len(items) == 0 {
 			break
@@ -114,10 +127,15 @@ func wantsState(state backup.State, archived bool) bool {
 	}
 }
 
-func (c *Client) fetchReposPage(ctx context.Context, page int) ([]repo, error) {
+// fetchReposPage returns the page's repos alongside the raw
+// X-OAuth-Scopes response header, which the caller checks once against
+// page 1 -- GitHub sends it on every request from a classic personal
+// access token, so any page would do, but checking early fails a scope
+// problem before more pages are even fetched.
+func (c *Client) fetchReposPage(ctx context.Context, page int) ([]repo, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.reposURL(page).String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("list github repos: %w", err)
+		return nil, "", fmt.Errorf("list github repos: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 	req.Header.Set("Accept", "application/vnd.github+json")
@@ -125,19 +143,36 @@ func (c *Client) fetchReposPage(ctx context.Context, page int) ([]repo, error) {
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("list github repos: %w", err)
+		return nil, "", fmt.Errorf("list github repos: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("list github repos: unexpected status %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("list github repos: unexpected status %d", resp.StatusCode)
 	}
 
 	var items []repo
 	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return nil, fmt.Errorf("list github repos: decode response: %w", err)
+		return nil, "", fmt.Errorf("list github repos: decode response: %w", err)
 	}
-	return items, nil
+	return items, resp.Header.Get("X-OAuth-Scopes"), nil
+}
+
+// checkRepoScope fails on a classic token's scope list that's missing
+// "repo". GitHub omits the X-OAuth-Scopes header entirely for a
+// fine-grained token, so an empty raw value isn't itself an error -- there's
+// no list to check against, and fine-grained access is scoped a different
+// way (per-repository, at token creation).
+func checkRepoScope(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	for _, s := range strings.Split(raw, ",") {
+		if strings.TrimSpace(s) == "repo" {
+			return nil
+		}
+	}
+	return ErrMissingRepoScope
 }
 
 func (c *Client) reposURL(page int) *url.URL {
