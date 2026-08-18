@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/alrayyes/backup-git-repos/compare/v1.3.0...v1.4.0) (2026-08-18)
+
+
+### Features
+
+* add --dry-run to run to preview what a backup would do ([#60](https://github.com/alrayyes/backup-git-repos/issues/60)) ([7c332c2](https://github.com/alrayyes/backup-git-repos/commit/7c332c23b39acc3e2cacb4878805813e3637d080)), closes [#50](https://github.com/alrayyes/backup-git-repos/issues/50)
+* default --config to the XDG config path when not passed ([#56](https://github.com/alrayyes/backup-git-repos/issues/56)) ([a3c4f45](https://github.com/alrayyes/backup-git-repos/commit/a3c4f45079470d6702e86fd9ad57307d7d76cbfc)), closes [#47](https://github.com/alrayyes/backup-git-repos/issues/47)
+* skip Forgejo repositories that mirror an external upstream ([#59](https://github.com/alrayyes/backup-git-repos/issues/59)) ([6e0b67b](https://github.com/alrayyes/backup-git-repos/commit/6e0b67be95b429ceaf6576b4c5162c133dbbfb50)), closes [#49](https://github.com/alrayyes/backup-git-repos/issues/49)
+
+
+### Bug Fixes
+
+* create a repo's destination directory tree before mirroring it ([#53](https://github.com/alrayyes/backup-git-repos/issues/53)) ([05b69e4](https://github.com/alrayyes/backup-git-repos/commit/05b69e47d9efeb124e0d01b64874352a34f74500)), closes [#48](https://github.com/alrayyes/backup-git-repos/issues/48)
+* fail listing when a classic GitHub token lacks the repo scope ([#55](https://github.com/alrayyes/backup-git-repos/issues/55)) ([907dfd7](https://github.com/alrayyes/backup-git-repos/commit/907dfd704982a13d027f497decafb1f6d86a91d8)), closes [#51](https://github.com/alrayyes/backup-git-repos/issues/51)
+
 ## [1.3.0](https://github.com/alrayyes/backup-git-repos/compare/v1.2.0...v1.3.0) (2026-08-18)
 
 
