@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -94,7 +95,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 
 	concurrency := opts.Concurrency
 	if concurrency < 1 {
-		concurrency = 1
+		concurrency = runtime.GOMAXPROCS(0)
 	}
 
 	var synced, skipped, failed, archived atomic.Int64
