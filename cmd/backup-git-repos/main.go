@@ -43,6 +43,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 		if err != nil {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
+		client.SkipMirrors = fc.SkipMirrors
 		return backup.Runner{Lister: client, Mirrorer: backup.Mirror{}, Remoter: client}, nil
 	case "gitlab":
 		client, err := gitlab.New(fc.URL, fc.Token)

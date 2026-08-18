@@ -32,7 +32,10 @@ func start(t *testing.T) fixture {
 	t.Helper()
 	ctx := context.Background()
 
-	ctr, err := tcforgejo.Run(ctx, image)
+	// Forgejo refuses to migrate/mirror from a host it treats as local
+	// network by default (SSRF protection); migrateMirror needs that
+	// relaxed to point a mirror at another repo on the instance itself.
+	ctr, err := tcforgejo.Run(ctx, image, tcforgejo.WithConfig("migrations", "ALLOW_LOCALNETWORKS", "true"))
 	testcontainers.CleanupContainer(t, ctr)
 	require.NoError(t, err)
 
