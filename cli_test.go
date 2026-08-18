@@ -3,6 +3,7 @@ package backup_test
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -174,6 +175,34 @@ func TestCLIRunDryRunPrintsPreviewSummary(t *testing.T) {
 	// newFakeLister seeds 2 non-empty repos (1 active, 1 archived) and 1
 	// empty one; --archive archived selects just the archived one.
 	require.Contains(t, out.String(), "home: would sync 2, skip 1, archive 1 (dry run)")
+}
+
+// logSettingLister records whatever logger SetLogger hands it, so a test
+// can prove runForge actually wires one in rather than leaving an adapter
+// to fall back to slog.Default() and log somewhere nobody's watching.
+type logSettingLister struct {
+	*fakeLister
+	got *slog.Logger
+}
+
+func (l *logSettingLister) SetLogger(log *slog.Logger) { l.got = log }
+
+func TestCLIRunSetsLoggerOnListerThatWantsOne(t *testing.T) {
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_LOGSETTER_TOKEN\n")
+	t.Setenv("TEST_LOGSETTER_TOKEN", "secret")
+
+	lister := &logSettingLister{fakeLister: newFakeLister()}
+	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
+		return backup.Runner{Lister: lister, Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{}}, nil
+	}
+
+	root := backup.NewRootCommand("test", newRunner)
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", t.TempDir()})
+
+	require.NoError(t, root.Execute())
+
+	require.NotNil(t, lister.got)
 }
 
 func TestCLIRunRequiresDest(t *testing.T) {

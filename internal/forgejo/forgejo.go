@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,6 +26,12 @@ type Client struct {
 	// external upstream from ListRepos. Off by default -- the zero value
 	// backs up exactly what earlier versions of this client did.
 	SkipMirrors bool
+
+	// Logger reports which repository SkipMirrors excluded, so it doesn't
+	// just silently vanish from the results. Set via SetLogger, since the
+	// composition root builds a Client before it knows which run's logger
+	// it should use; nil defaults to slog.Default().
+	Logger *slog.Logger
 }
 
 // New builds a Client against the given base URL.
@@ -34,6 +41,18 @@ func New(base, token string) (*Client, error) {
 		return nil, fmt.Errorf("parse forgejo url: %w", err)
 	}
 	return &Client{BaseURL: u, Token: token}, nil
+}
+
+// SetLogger implements backup.LogSetter.
+func (c *Client) SetLogger(l *slog.Logger) {
+	c.Logger = l
+}
+
+func (c *Client) logger() *slog.Logger {
+	if c.Logger != nil {
+		return c.Logger
+	}
+	return slog.Default()
 }
 
 // Remote implements backup.Remoter by deriving the clone URL from the
@@ -78,6 +97,7 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 
 		for _, r := range body.Data {
 			if c.SkipMirrors && r.Mirror {
+				c.logger().Info("skipping mirror repository", "path", r.FullName)
 				continue
 			}
 			repos = append(repos, backup.Repo{Path: r.FullName, Archived: r.Archived, Empty: r.Empty})

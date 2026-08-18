@@ -156,7 +156,8 @@ A `forgejo` entry can also set `skip_mirrors: true` to exclude repositories
 Forgejo itself reports as mirrors of an external upstream from both
 listing and mirroring — there's no point re-backing-up content that
 already lives at its real source elsewhere. Off by default; other kinds
-ignore the field.
+ignore the field. Every repository it excludes this way is logged by name,
+so a shorter backup than expected has an answer.
 
 A forge entry can set `token_env` instead of `token`: the name of an
 environment variable holding the token, if you'd rather keep it out of the
