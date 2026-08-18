@@ -66,7 +66,7 @@ var knownForgeKinds = map[string]bool{
 // name a set environment variable. Failing before touching the network
 // beats a 401 partway through a run.
 func LoadConfig(path string) (Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // path is the file the caller explicitly named via --config/-c; reading it is the whole point
 	if err != nil {
 		return Config{}, fmt.Errorf("load config: %w", err)
 	}

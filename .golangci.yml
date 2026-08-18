@@ -3,8 +3,10 @@ linters:
   default: standard
   enable:
     - bodyclose
+    - errorlint
     - gocritic
     - gocyclo
+    - gosec
     - misspell
     - revive
     - sqlclosecheck
@@ -12,7 +14,16 @@ linters:
   settings:
     gocyclo:
       min-complexity: 15
+  exclusions:
+    rules:
+      # gosec's file-inclusion and subprocess-argument findings are about
+      # untrusted external input; a _test.go file only ever shells out to
+      # git/tar or reads a path it built itself as its own test fixture.
+      - path: _test\.go
+        linters:
+          - gosec
 formatters:
   enable:
+    - gci
     - gofumpt
     - goimports
