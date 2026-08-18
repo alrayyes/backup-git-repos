@@ -18,7 +18,7 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
   `bun.lock`.
 - **Docker**, for the integration test suites (`go test ./...` never
   touches it; `-tags=integration` does) and for linting `Dockerfile` with
-  hadolint, which runs from its own image rather than a local install.
+  hadolint, which runs from its own image rather than a local installation.
 - **[Vale](https://vale.sh)**, optional. The hooks skip it when it isn't on
   your `PATH`, and CI runs it either way.
 

@@ -41,6 +41,7 @@
       "tarballs",
       "gzipped",
       "filesystem",
+      "writable",
       "subprocess",
       "subprocesses",
       "runtime",
