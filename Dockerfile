@@ -10,8 +10,16 @@ FROM alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN apk add --no-cache git=2.49.1-r0
+RUN apk add --no-cache git=2.49.1-r0 && \
+    addgroup -g 1000 backup && \
+    adduser -D -u 1000 -G backup backup
 
 COPY ${TARGETOS}/${TARGETARCH}/backup-git-repos /usr/local/bin/backup-git-repos
+
+# UID/GID fixed at 1000 rather than left to adduser's default, since it's
+# the caller's own mounted volume that has to be writable by whatever this
+# is -- a fixed, documented number is something a Dockerfile line or a
+# --user flag can target; "whatever adduser picked this build" isn't.
+USER 1000:1000
 
 ENTRYPOINT ["/usr/local/bin/backup-git-repos"]

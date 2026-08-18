@@ -46,7 +46,8 @@
       "runtime",
       "Dependabot",
       "stdout",
-      "stderr"
+      "stderr",
+      "hadolint"
     ]
   },
   "ltex.disabledRules": {

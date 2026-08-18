@@ -16,8 +16,9 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
 - **[bun](https://bun.sh)** for the Node-shaped tooling: commitlint, Biome,
   Prettier, markdownlint-cli2 and lefthook. Not npm. The lockfile is
   `bun.lock`.
-- **Docker**, for the integration test suites. `go test ./...` never touches
-  it; `-tags=integration` does.
+- **Docker**, for the integration test suites (`go test ./...` never
+  touches it; `-tags=integration` does) and for linting `Dockerfile` with
+  hadolint, which runs from its own image rather than a local install.
 - **[Vale](https://vale.sh)**, optional. The hooks skip it when it isn't on
   your `PATH`, and CI runs it either way.
 
@@ -84,7 +85,10 @@ install` puts them in place and everyone gets the same version:
 
 - **pre-commit**: fixes staged files in place — `golangci-lint fmt` on Go,
   `prettier --write` then `markdownlint-cli2 --fix` on Markdown, `prettier
---write` on YAML, `biome check --write` on JSON.
+--write` on YAML, `biome check --write` on JSON. `Dockerfile` gets
+  [hadolint](https://github.com/hadolint/hadolint) instead, which has no
+  fixer, so it checks and fails rather than rewriting anything. It needs
+  Docker, same as the integration suites below.
 - **commit-msg**: validates commit messages with
   [commitlint](https://commitlint.js.org/) against [Conventional
   Commits](https://www.conventionalcommits.org/).
