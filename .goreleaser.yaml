@@ -7,7 +7,8 @@ before:
     - go mod tidy
 
 builds:
-  - main: ./cmd/backup-git-repos
+  - id: backup-git-repos
+    main: ./cmd/backup-git-repos
     env:
       - CGO_ENABLED=0
     goos:
@@ -26,6 +27,28 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
+
+# dockers_v2 (buildx-backed) rather than the older dockers/docker_manifests
+# pair: one entry with a platforms list builds and pushes a single
+# multi-arch manifest directly, instead of building a same-arch image per
+# platform and stitching them together by hand afterwards. darwin isn't in
+# platforms: Docker doesn't run macOS containers, so the darwin archives
+# above are the only artifact for it.
+dockers_v2:
+  - ids:
+      - backup-git-repos
+    dockerfile: Dockerfile
+    images:
+      - ghcr.io/alrayyes/backup-git-repos
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.source: https://github.com/alrayyes/backup-git-repos
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
 
 # release-please writes the release notes from Conventional Commits and
 # creates the GitHub release; goreleaser only hangs binaries on it. Left on,

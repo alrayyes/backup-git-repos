@@ -158,3 +158,10 @@ next version and changelog. Merging it tags the release, which
 [goreleaser](https://goreleaser.com/) then builds and attaches binaries to, as
 a second job in the same workflow gated on the tag having just been created.
 Nobody picks a version by hand.
+
+That same goreleaser job also builds and pushes a multi-arch (`linux/amd64`,
+`linux/arm64`) container image to `ghcr.io/alrayyes/backup-git-repos`, tagged
+`latest` and with the version. `Dockerfile` is a plain runtime image, not a
+build stage -- goreleaser cross-compiles the binaries first and stages each
+platform's into the image build context itself
+(`dockers_v2` in `.goreleaser.yaml`).
