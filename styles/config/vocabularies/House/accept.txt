@@ -54,3 +54,4 @@ runtime
 CPUs?
 stdout
 stderr
+hadolint

@@ -1,0 +1,5 @@
+# Nothing disabled yet — the Dockerfile is clean against hadolint's defaults.
+# A rule that needs disabling gets a comment here explaining why, not an
+# inline `# hadolint ignore=` scattered next to the line it's silencing —
+# see rules/containers.md.
+ignored: []

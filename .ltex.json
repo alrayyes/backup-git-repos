@@ -41,12 +41,14 @@
       "tarballs",
       "gzipped",
       "filesystem",
+      "writable",
       "subprocess",
       "subprocesses",
       "runtime",
       "Dependabot",
       "stdout",
-      "stderr"
+      "stderr",
+      "hadolint"
     ]
   },
   "ltex.disabledRules": {

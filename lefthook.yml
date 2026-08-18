@@ -74,6 +74,10 @@ pre-commit:
         fi
         ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules}/**' .
 
+    - name: hadolint
+      glob: "Dockerfile"
+      run: bun run lint:dockerfile
+
 commit-msg:
   jobs:
     - name: commitlint
@@ -121,3 +125,6 @@ pre-push:
 
     - name: vale
       run: ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules}/**' .
+
+    - name: hadolint
+      run: bun run lint:dockerfile
