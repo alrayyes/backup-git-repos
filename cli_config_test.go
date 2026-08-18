@@ -29,6 +29,23 @@ func TestCLIConfigInitWritesToXDGDefault(t *testing.T) {
 	require.Contains(t, string(contents), "forges:")
 }
 
+func TestCLIConfigInitExampleUsesLiteralToken(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"config", "init"})
+
+	require.NoError(t, root.Execute())
+
+	contents, err := os.ReadFile(filepath.Join(xdg, "backup-git-repos", "config.yaml"))
+	require.NoError(t, err)
+
+	require.Contains(t, string(contents), "token:")
+	require.NotContains(t, string(contents), "token_env:")
+}
+
 func TestCLIConfigInitRespectsConfigFlag(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "custom.yaml")
 

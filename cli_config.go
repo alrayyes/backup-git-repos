@@ -10,8 +10,8 @@ import (
 )
 
 // exampleConfig is what `config init` writes: a starter file with an
-// example forge commented out, since it names a token_env the user hasn't
-// necessarily set yet, and LoadConfig fails startup on that.
+// example forge commented out, since its token is only a placeholder to
+// replace with a real one before it's worth uncommenting.
 const exampleConfig = `# backup-git-repos config. See:
 # https://github.com/alrayyes/backup-git-repos#configuration
 dest: /srv/backups/git
@@ -21,7 +21,7 @@ forges: []
 #   - name: work # becomes the top-level folder for this forge's repos
 #     kind: gitlab # forgejo, gitlab, or github
 #     url: https://gitlab.example.com # omit for github
-#     token_env: WORK_GITLAB_TOKEN
+#     token: paste-your-token-here
 `
 
 func newConfigCommand(flags *cliFlags) *cobra.Command {
