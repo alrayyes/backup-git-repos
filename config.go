@@ -41,6 +41,11 @@ type ForgeConfig struct {
 	TokenEnv     string `yaml:"token_env"`
 	TokenLiteral string `yaml:"token"`
 	Token        string `yaml:"-"`
+
+	// SkipMirrors excludes repositories a forge reports as mirrors of an
+	// external upstream from both listing and mirroring. Only the forgejo
+	// adapter interprets it today; other kinds ignore it.
+	SkipMirrors bool `yaml:"skip_mirrors"`
 }
 
 // Config is the top-level shape of the YAML config file.

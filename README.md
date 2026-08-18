@@ -156,6 +156,12 @@ backed up, and nothing more:
   fine-grained token, so that check can't run against one -- double-check a
   fine-grained token's repository access is set to what you expect.
 
+A `forgejo` entry can also set `skip_mirrors: true` to exclude repositories
+Forgejo itself reports as mirrors of an external upstream from both
+listing and mirroring — there's no point re-backing-up content that
+already lives at its real source elsewhere. Off by default; other kinds
+ignore the field.
+
 A forge entry can set `token` instead of `token_env`: the literal token,
 right in the file, if you'd rather not manage a matching environment
 variable for it. Setting both on the same entry is a config error, not a

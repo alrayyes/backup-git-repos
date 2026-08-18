@@ -39,6 +39,41 @@ forges:
 	}}, cfg.Forges)
 }
 
+func TestLoadConfigReadsSkipMirrors(t *testing.T) {
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token_env: TEST_FORGEJO_TOKEN
+    skip_mirrors: true
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.True(t, cfg.Forges[0].SkipMirrors)
+}
+
+func TestLoadConfigDefaultsSkipMirrorsToFalse(t *testing.T) {
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token_env: TEST_FORGEJO_TOKEN
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.False(t, cfg.Forges[0].SkipMirrors)
+}
+
 func TestLoadConfigErrorsOnMissingToken(t *testing.T) {
 	path := writeConfig(t, `
 dest: /srv/backups

@@ -20,6 +20,11 @@ type Client struct {
 	BaseURL *url.URL
 	Token   string
 	HTTP    *http.Client
+
+	// SkipMirrors excludes repositories Forgejo reports as mirrors of an
+	// external upstream from ListRepos. Off by default -- the zero value
+	// backs up exactly what earlier versions of this client did.
+	SkipMirrors bool
 }
 
 // New builds a Client against the given base URL.
@@ -52,6 +57,7 @@ type repo struct {
 	FullName string `json:"full_name"`
 	Archived bool   `json:"archived"`
 	Empty    bool   `json:"empty"`
+	Mirror   bool   `json:"mirror"`
 }
 
 // ListRepos implements backup.Lister by paging through
@@ -71,6 +77,9 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 		}
 
 		for _, r := range body.Data {
+			if c.SkipMirrors && r.Mirror {
+				continue
+			}
 			repos = append(repos, backup.Repo{Path: r.FullName, Archived: r.Archived, Empty: r.Empty})
 		}
 
