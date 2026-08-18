@@ -21,6 +21,8 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
   hadolint, which runs from its own image rather than a local installation.
 - **[Vale](https://vale.sh)**, optional. The hooks skip it when it isn't on
   your `PATH`, and CI runs it either way.
+- **[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)**,
+  to check dependencies for known vulnerabilities before pushing one.
 
 ## Getting set up
 
@@ -28,6 +30,7 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
 # Install the Go tooling
 go install golang.org/x/tools/cmd/goimports@latest
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 
 # Installs the Node-shaped tooling and the git hooks: lefthook is pinned in
 # package.json, and the `prepare` script runs it for you.
@@ -39,6 +42,9 @@ go test ./...
 # Run and fix by hand
 golangci-lint run
 golangci-lint fmt
+
+# Check for known vulnerabilities in dependencies
+govulncheck ./...
 
 # Test commit message format
 echo "feat: add new feature" | bunx commitlint
@@ -100,6 +106,11 @@ The container suites are the deliberate omission from `pre-push`. A Forgejo
 boot is more than a push should wait on, and CI runs it on every pull request
 regardless. Run `go test -tags=integration ./...` yourself before pushing a
 change to an adapter.
+
+`govulncheck` is the other deliberate omission: it queries the vulnerability
+database over the network on every run, the same reason LTeX stays out of the
+hooks below. CI runs it on every push; run `govulncheck ./...` yourself
+before pushing a dependency change.
 
 The hooks and the GitHub Actions workflows run the same commands on purpose.
 The hook catches a problem early; CI is the gate you can't skip.

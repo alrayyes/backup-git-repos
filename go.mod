@@ -1,6 +1,6 @@
 module github.com/alrayyes/backup-git-repos
 
-go 1.26.0
+go 1.26.6
 
 require (
 	github.com/goccy/go-yaml v1.19.2
