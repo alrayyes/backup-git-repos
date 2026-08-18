@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	backup "github.com/alrayyes/backup-git-repos"
@@ -28,15 +29,35 @@ func bareRepo(t *testing.T) string {
 
 // runGit sets a commit identity via env vars rather than relying on the
 // machine's global git config, which a CI runner has none of.
+//
+// It also strips any GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE inherited from the
+// environment. Git sets those for hook processes, and lefthook's pre-commit
+// hook runs this suite -- without stripping them, `-C dir` loses to the
+// inherited GIT_DIR and every git call here lands in the real repo being
+// committed to instead of the test's temp dir.
 func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(filterGitEnv(os.Environ()),
 		"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
 		"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
 	)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+}
+
+func filterGitEnv(env []string) []string {
+	filtered := env[:0]
+	for _, kv := range env {
+		switch {
+		case strings.HasPrefix(kv, "GIT_DIR="),
+			strings.HasPrefix(kv, "GIT_WORK_TREE="),
+			strings.HasPrefix(kv, "GIT_INDEX_FILE="):
+			continue
+		}
+		filtered = append(filtered, kv)
+	}
+	return filtered
 }
 
 func TestArchiveWritesAGzippedTar(t *testing.T) {
@@ -110,6 +131,7 @@ func runTar(t *testing.T, dir string, args ...string) {
 func gitLog(t *testing.T, dir string) string {
 	t.Helper()
 	cmd := exec.Command("git", "-C", dir, "log", "--oneline")
+	cmd.Env = filterGitEnv(os.Environ())
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 	return string(out)
