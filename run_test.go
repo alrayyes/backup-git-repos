@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -129,6 +130,43 @@ func TestRunDefaultsConcurrencyToNumCPU(t *testing.T) {
 		require.Equal(t, n, o.result.Synced)
 	case <-ctx.Done():
 		t.Fatal("run did not finish after the concurrency barrier was released")
+	}
+}
+
+func TestRunReportsProgress(t *testing.T) {
+	var mu sync.Mutex
+	var calls [][2]int
+	progress := func(done, total int) {
+		mu.Lock()
+		defer mu.Unlock()
+		calls = append(calls, [2]int{done, total})
+	}
+
+	runner := backup.Runner{
+		Lister:   newFakeLister(),
+		Mirrorer: fakeMirrorer{},
+		Remoter:  fakeRemoter{},
+	}
+
+	_, err := runner.Run(context.Background(), backup.Options{
+		Dest:     t.TempDir(),
+		State:    backup.StateAll,
+		Progress: progress,
+	})
+	require.NoError(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.NotEmpty(t, calls)
+
+	// newFakeLister seeds 3 repos (2 non-empty, 1 empty); every call
+	// reports the same total, and the last call reports every repo done,
+	// including the one skipped for being empty.
+	last := calls[len(calls)-1]
+	require.Equal(t, 3, last[1])
+	require.Equal(t, 3, last[0])
+	for _, c := range calls {
+		require.Equal(t, 3, c[1])
 	}
 }
 

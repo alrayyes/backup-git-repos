@@ -52,3 +52,5 @@ filesystem
 subprocess(es)?
 runtime
 CPUs?
+stdout
+stderr

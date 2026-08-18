@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -57,6 +58,13 @@ type Options struct {
 	Concurrency int
 	Timeout     time.Duration
 	Log         *slog.Logger
+
+	// Progress, if set, is called every time a repository is skipped or
+	// finishes mirroring (successfully or not), reporting how many of the
+	// total have been accounted for so far. Run serializes calls to it, so
+	// it doesn't need its own locking even though repositories are
+	// mirrored concurrently.
+	Progress func(done, total int)
 }
 
 // Result reports what a Run did.
@@ -98,7 +106,18 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		concurrency = runtime.GOMAXPROCS(0)
 	}
 
-	var synced, skipped, failed, archived atomic.Int64
+	var synced, skipped, failed, archived, done atomic.Int64
+	total := len(repos)
+	var progressMu sync.Mutex
+	reportDone := func() {
+		n := int(done.Add(1))
+		if opts.Progress == nil {
+			return
+		}
+		progressMu.Lock()
+		defer progressMu.Unlock()
+		opts.Progress(n, total)
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
@@ -107,10 +126,13 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		if repo.Empty {
 			log.Warn("skipping empty repository", "path", repo.Path)
 			skipped.Add(1)
+			reportDone()
 			continue
 		}
 
 		g.Go(func() error {
+			defer reportDone()
+
 			repoCtx := ctx
 			if opts.Timeout > 0 {
 				var cancel context.CancelFunc
@@ -137,6 +159,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 				dir = filepath.Join(scratch, filepath.Base(dir))
 			}
 
+			log.Debug("mirroring", "path", repo.Path)
 			if err := r.Mirrorer.Sync(repoCtx, r.Remoter.Remote(repo), dir); err != nil {
 				log.Error("mirror failed", "path", repo.Path, "error", err)
 				failed.Add(1)
@@ -146,6 +169,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 
 			if wantArchive {
 				archiveOut := filepath.Join(opts.ArchiveDir, filepath.FromSlash(repo.Path)+".tar.gz")
+				log.Debug("archiving", "path", repo.Path)
 				if err := archiveRepo(dir, archiveOut); err != nil {
 					log.Error("archive failed", "path", repo.Path, "error", err)
 					failed.Add(1)

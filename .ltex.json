@@ -44,7 +44,9 @@
       "subprocess",
       "subprocesses",
       "runtime",
-      "Dependabot"
+      "Dependabot",
+      "stdout",
+      "stderr"
     ]
   },
   "ltex.disabledRules": {

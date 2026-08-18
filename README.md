@@ -162,6 +162,13 @@ git clone repo.git restored-repo
 - `--concurrency, -j`: repositories mirrored in parallel (default the number
   of CPUs)
 - `--timeout`: per-repository timeout (default `30m`)
+- `--verbose, -v`: log each repository as it starts mirroring and archiving,
+  not just failures and the final summary
+
+`run` also prints a live `<forge>: done/total` progress line to stderr while
+it works, redrawn in place — only when stderr is a terminal, since a
+carriage-return-redrawn line is unreadable once piped or redirected into a
+file or CI log.
 
 `backup-git-repos list` runs the same discovery and filtering without cloning
 anything, which is the fast way to check a config is picking up what you
