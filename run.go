@@ -159,6 +159,12 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 				dir = filepath.Join(scratch, filepath.Base(dir))
 			}
 
+			if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
+				log.Error("mirror failed", "path", repo.Path, "error", err)
+				failed.Add(1)
+				return nil
+			}
+
 			log.Debug("mirroring", "path", repo.Path)
 			if err := r.Mirrorer.Sync(repoCtx, r.Remoter.Remote(repo), dir); err != nil {
 				log.Error("mirror failed", "path", repo.Path, "error", err)
