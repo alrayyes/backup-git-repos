@@ -67,6 +67,16 @@ List every forge in a YAML file. A token never goes in the file, only the
 name of the environment variable holding it — the tool reads the variable at
 startup and fails before touching the network if it's unset.
 
+`backup-git-repos config init` writes a starter file to get from a blank
+directory to something you can edit — `$XDG_CONFIG_HOME/backup-git-repos/config.yaml`
+(or `~/.config/backup-git-repos/config.yaml` if `XDG_CONFIG_HOME` isn't set)
+by default, or wherever `--config`/`-c` names. It refuses to overwrite an
+existing file unless you pass `--force`.
+
+```bash
+backup-git-repos config init
+```
+
 ```yaml
 dest: /srv/backups/git
 forges:
@@ -147,6 +157,9 @@ git clone repo.git restored-repo
 `backup-git-repos list` runs the same discovery and filtering without cloning
 anything, which is the fast way to check a config is picking up what you
 expect.
+
+`backup-git-repos config init [--force]` writes the starter config described
+under [Configuration](#configuration).
 
 ## License
 
