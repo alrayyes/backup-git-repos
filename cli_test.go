@@ -5,6 +5,7 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	backup "github.com/alrayyes/backup-git-repos"
@@ -73,12 +74,20 @@ func TestCLIRunRejectsUnknownArchive(t *testing.T) {
 
 // dirCapturingMirrorer records every dir it was asked to sync into, without
 // touching disk -- these tests care only about the path, not the mirror
-// contents.
+// contents. Run mirrors repositories concurrently, so appends are guarded by
+// a mutex rather than assumed sequential.
 type dirCapturingMirrorer struct {
+	mu   *sync.Mutex
 	dirs *[]string
 }
 
+func newDirCapturingMirrorer(dirs *[]string) dirCapturingMirrorer {
+	return dirCapturingMirrorer{mu: new(sync.Mutex), dirs: dirs}
+}
+
 func (m dirCapturingMirrorer) Sync(_ context.Context, _ backup.Remote, dir string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	*m.dirs = append(*m.dirs, dir)
 	return nil
 }
@@ -87,7 +96,7 @@ func newRunnerCapturingDirs(dirs *[]string) backup.NewRunner {
 	return func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{
 			Lister:   newFakeLister(),
-			Mirrorer: dirCapturingMirrorer{dirs: dirs},
+			Mirrorer: newDirCapturingMirrorer(dirs),
 			Remoter:  fakeRemoter{},
 		}, nil
 	}
@@ -169,4 +178,54 @@ func TestCLIRunLeavesOtherUserTildePathUnexpanded(t *testing.T) {
 	for _, dir := range dirs {
 		require.Contains(t, dir, "~otheruser/backups")
 	}
+}
+
+// perForgeLister returns a different repo per forge name, so a test can tell
+// which forge's Runner produced a given mirrored path.
+type perForgeLister struct {
+	forge string
+}
+
+func (l perForgeLister) ListRepos(_ context.Context, _ backup.State) ([]backup.Repo, error) {
+	return []backup.Repo{{Path: l.forge + "-repo"}}, nil
+}
+
+// Regression test for #32: every forge's repositories used to land under
+// the first forge's destination folder instead of their own.
+func TestCLIRunKeepsEachForgesDestSeparate(t *testing.T) {
+	cfgPath := writeConfig(t, `
+dest: /unused
+forges:
+  - name: a
+    kind: forgejo
+    url: https://git.example.org
+    token_env: TEST_MULTI_FORGE_A
+  - name: b
+    kind: forgejo
+    url: https://git.example.org
+    token_env: TEST_MULTI_FORGE_B
+`)
+	t.Setenv("TEST_MULTI_FORGE_A", "secret")
+	t.Setenv("TEST_MULTI_FORGE_B", "secret")
+
+	var dirs []string
+	newRunner := func(fc backup.ForgeConfig) (backup.Runner, error) {
+		return backup.Runner{
+			Lister:   perForgeLister{forge: fc.Name},
+			Mirrorer: newDirCapturingMirrorer(&dirs),
+			Remoter:  fakeRemoter{},
+		}, nil
+	}
+
+	dest := t.TempDir()
+	root := backup.NewRootCommand("test", newRunner)
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", dest})
+
+	require.NoError(t, root.Execute())
+
+	require.Equal(t, []string{
+		filepath.Join(dest, "a", "a-repo.git"),
+		filepath.Join(dest, "b", "b-repo.git"),
+	}, dirs)
 }
