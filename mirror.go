@@ -58,7 +58,7 @@ func (m Mirror) clone(ctx context.Context, git string, r Remote, dir string) err
 		return fmt.Errorf("mirror clone %s: %w", r.CloneURL, err)
 	}
 
-	cmd := exec.CommandContext(ctx, git, "clone", "--mirror", r.CloneURL, partial)
+	cmd := exec.CommandContext(ctx, git, "clone", "--mirror", r.CloneURL, partial) //nolint:gosec // argv, not a shell -- git and r.CloneURL never pass through shell interpretation
 	cmd.Env = env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("mirror clone %s: %w: %s", r.CloneURL, err, out)
@@ -76,7 +76,7 @@ func (m Mirror) update(ctx context.Context, git string, r Remote, dir string) er
 		return fmt.Errorf("mirror update %s: %w", r.CloneURL, err)
 	}
 
-	cmd := exec.CommandContext(ctx, git, "-C", dir, "remote", "update", "--prune")
+	cmd := exec.CommandContext(ctx, git, "-C", dir, "remote", "update", "--prune") //nolint:gosec // argv, not a shell -- git and dir never pass through shell interpretation
 	cmd.Env = env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("mirror update %s: %w: %s", r.CloneURL, err, out)

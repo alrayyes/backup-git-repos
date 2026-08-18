@@ -59,7 +59,10 @@ func runConfigInit(cmd *cobra.Command, flags cliFlags, force bool) error {
 		}
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	// 0o750: the file written into it can carry a literal token, so the
+	// directory itself starts unreadable by anyone but the owner and group
+	// too, not just the file.
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
 	// 0o600: a config file can carry a literal token (see the `token` field

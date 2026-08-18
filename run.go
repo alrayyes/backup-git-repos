@@ -159,7 +159,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 				dir = filepath.Join(scratch, filepath.Base(dir))
 			}
 
-			if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(dir), 0o750); err != nil {
 				log.Error("mirror failed", "path", repo.Path, "error", err)
 				failed.Add(1)
 				return nil
@@ -202,7 +202,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 // the destination tree mirrors the forge's namespace, so a repo two levels
 // deep needs the same nesting created in the archive directory too.
 func archiveRepo(dir, out string) error {
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(out), 0o750); err != nil {
 		return err
 	}
 	return Archive(dir, out)

@@ -56,7 +56,7 @@ func writeArchive(dir, out string) error {
 		return err
 	}
 
-	f, err := os.Create(out)
+	f, err := os.Create(out) //nolint:gosec // out is this package's own destination path, built from opts.ArchiveDir and a repo's namespace, not attacker input
 	if err != nil {
 		return err
 	}
