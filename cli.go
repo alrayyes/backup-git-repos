@@ -110,7 +110,7 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 		},
 	}
 
-	root.AddCommand(runCmd, listCmd, versionCmd)
+	root.AddCommand(runCmd, listCmd, versionCmd, newConfigCommand(&flags))
 	return root
 }
 
