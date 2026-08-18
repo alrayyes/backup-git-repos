@@ -129,7 +129,9 @@ git clone repo.git restored-repo
 
 - `--config, -c`: path to the YAML config (required)
 - `--dest, -d`: override the destination directory from the config. Required
-  on `run` unless the config sets `dest`
+  on `run` unless the config sets `dest`. A leading `~` (in this flag, in
+  `dest` in the config file, or in `--archive-dir`) expands to your home
+  directory
 - `--forge`: repeatable; restrict the run to named forges
 - `--state`: `all` \| `active` \| `archived` — which repositories to mirror
   (default `all`)

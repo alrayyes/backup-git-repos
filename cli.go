@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -144,10 +146,19 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	if dest == "" && !listOnly {
 		return errors.New("--dest is required, or set dest in the config file")
 	}
+	dest, err = expandHome(dest)
+	if err != nil {
+		return err
+	}
 
 	archiveDir := flags.archiveDir
 	if archiveDir == "" {
 		archiveDir = filepath.Join(dest, "archive")
+	} else {
+		archiveDir, err = expandHome(archiveDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	log := slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), nil))
@@ -163,6 +174,26 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	}
 
 	return nil
+}
+
+// expandHome resolves a leading "~" to the current user's home directory,
+// the way a shell would before the tool ever sees the argument. It only
+// resolves the current user's own "~" and "~/..." -- "~otheruser/..." passes
+// through untouched, since resolving another account's home isn't something
+// os.UserHomeDir can even answer.
+func expandHome(path string) (string, error) {
+	if path != "~" && !strings.HasPrefix(path, "~/") {
+		return path, nil
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("expand ~: %w", err)
+	}
+	if path == "~" {
+		return home, nil
+	}
+	return filepath.Join(home, path[2:]), nil
 }
 
 func runForge(
