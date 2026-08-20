@@ -31,3 +31,14 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
+
+  # The Dockerfile's base image. Ships in the published container, same
+  # reasoning as gomod above - a bump here is fix:, not chore:.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
+      prefix-development: "fix"
+      include: "scope"
