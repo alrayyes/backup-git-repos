@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.1](https://github.com/alrayyes/backup-git-repos/compare/v1.4.0...v1.4.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* bump the pinned Forgejo test image, 16.0.2 was pruned from the registry ([#74](https://github.com/alrayyes/backup-git-repos/issues/74)) ([1cd4eae](https://github.com/alrayyes/backup-git-repos/commit/1cd4eae17c4dff20fb46c993851ccff34a93b8d7)), closes [#73](https://github.com/alrayyes/backup-git-repos/issues/73)
+* **deps:** bump alpine from 3.22.2 to 3.24.1 ([#69](https://github.com/alrayyes/backup-git-repos/issues/69)) ([e30ad46](https://github.com/alrayyes/backup-git-repos/commit/e30ad463026a89beaf83c3ce9a4987c7fa8990df))
+* log which repository skip_mirrors excludes ([#65](https://github.com/alrayyes/backup-git-repos/issues/65)) ([a50c9a2](https://github.com/alrayyes/backup-git-repos/commit/a50c9a25e6a65c41be2e36e69193f6ccfbbda14c)), closes [#64](https://github.com/alrayyes/backup-git-repos/issues/64)
+
 ## [1.4.0](https://github.com/alrayyes/backup-git-repos/compare/v1.3.0...v1.4.0) (2026-08-18)
 
 
