@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/alrayyes/backup-git-repos/compare/v1.4.1...v1.4.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* bump the pinned apk git version, alpine 3.24.1 dropped 2.49.1-r0 ([#76](https://github.com/alrayyes/backup-git-repos/issues/76)) ([6f87794](https://github.com/alrayyes/backup-git-repos/commit/6f87794d258e37f34d91e05a15a54a3415e35ff1)), closes [#75](https://github.com/alrayyes/backup-git-repos/issues/75)
+
 ## [1.4.1](https://github.com/alrayyes/backup-git-repos/compare/v1.4.0...v1.4.1) (2026-08-21)
 
 
