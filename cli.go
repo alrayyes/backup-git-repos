@@ -51,16 +51,17 @@ func ParseArchive(s string) (ArchiveSelection, error) {
 }
 
 type cliFlags struct {
-	config      string
-	dest        string
-	forges      []string
-	state       string
-	archive     string
-	archiveDir  string
-	concurrency int
-	timeout     time.Duration
-	verbose     bool
-	dryRun      bool
+	config       string
+	dest         string
+	forges       []string
+	state        string
+	archive      string
+	archiveDir   string
+	concurrency  int
+	timeout      time.Duration
+	verbose      bool
+	dryRun       bool
+	pruneRemoved bool
 }
 
 // NewRunner builds the Runner for a configured forge. Implementations live
@@ -97,6 +98,8 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 	runCmd.Flags().StringVar(&flags.archiveDir, "archive-dir", "", "where archives go (default: <dest>/archive)")
 	runCmd.Flags().BoolVarP(&flags.verbose, "verbose", "v", false, "print per-repository progress as it happens")
 	runCmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "print what a run would do, without cloning or writing anything")
+	runCmd.Flags().BoolVar(&flags.pruneRemoved, "prune-removed", false,
+		"delete a mirror (and its tar.gz, if archived) once its repository no longer appears in the forge's listing")
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -276,36 +279,52 @@ func runForge(
 	}
 
 	if flags.dryRun {
-		return dryRunForge(cmd, fc, dest, state, archive, runner)
+		return dryRunForge(cmd, fc, dryRunConfig{
+			dest: dest, archiveDir: archiveDir, state: state, archive: archive, pruneRemoved: flags.pruneRemoved,
+		}, runner)
 	}
 
 	stderr := cmd.ErrOrStderr()
 	result, err := runner.Run(cmd.Context(), Options{
-		Dest:        filepath.Join(dest, fc.Name),
-		State:       state,
-		Archive:     archive,
-		ArchiveDir:  filepath.Join(archiveDir, fc.Name),
-		Concurrency: flags.concurrency,
-		Timeout:     flags.timeout,
-		Log:         log,
-		Progress:    newProgressReporter(stderr, fc.Name, isTerminalWriter(stderr)),
+		Dest:         filepath.Join(dest, fc.Name),
+		State:        state,
+		Archive:      archive,
+		ArchiveDir:   filepath.Join(archiveDir, fc.Name),
+		Concurrency:  flags.concurrency,
+		Timeout:      flags.timeout,
+		Log:          log,
+		PruneRemoved: flags.pruneRemoved,
+		Progress:     newProgressReporter(stderr, fc.Name, isTerminalWriter(stderr)),
 	})
 	if err != nil {
 		return fmt.Errorf("run %s: %w", fc.Name, err)
 	}
-	cmd.Printf("%s: synced %d, skipped %d, failed %d, archived %d\n",
-		fc.Name, result.Synced, result.Skipped, result.Failed, result.Archived)
+	cmd.Printf("%s: synced %d, skipped %d, failed %d, archived %d, pruned %d\n",
+		fc.Name, result.Synced, result.Skipped, result.Failed, result.Archived, result.Pruned)
 	return nil
 }
 
+// dryRunConfig groups what dryRunForge needs beyond fc and runner, so the
+// next flag it also wants to preview doesn't grow this into another
+// positional-parameter list -- runForge takes the same shape of thing as
+// its own cliFlags parameter already.
+type dryRunConfig struct {
+	dest, archiveDir string
+	state            State
+	archive          ArchiveSelection
+	pruneRemoved     bool
+}
+
 // dryRunForge previews what a real run would do to fc's repositories,
-// without cloning, updating, or archiving anything: for each repository it
-// prints the action a real run would take -- clone, update, or skip for an
-// empty repo -- based only on whether a mirror already exists at its
-// destination on disk, plus whether it would also be archived. The
-// destination's own directory tree is read, never written.
-func dryRunForge(cmd *cobra.Command, fc ForgeConfig, dest string, state State, archive ArchiveSelection, runner Runner) error {
-	repos, err := runner.Lister.ListRepos(cmd.Context(), state)
+// without cloning, updating, archiving, or pruning anything: for each
+// repository it prints the action a real run would take -- clone, update,
+// or skip for an empty repo -- based only on whether a mirror already
+// exists at its destination on disk, plus whether it would also be
+// archived. With cfg.pruneRemoved, it also previews which mirrors (and
+// archives) --prune-removed would delete. The destination's own directory
+// tree is read, never written.
+func dryRunForge(cmd *cobra.Command, fc ForgeConfig, cfg dryRunConfig, runner Runner) error {
+	repos, err := runner.Lister.ListRepos(cmd.Context(), cfg.state)
 	if err != nil {
 		return fmt.Errorf("list %s: %w", fc.Name, err)
 	}
@@ -318,8 +337,8 @@ func dryRunForge(cmd *cobra.Command, fc ForgeConfig, dest string, state State, a
 			continue
 		}
 
-		wantArchive := archive.wants(r.Archived)
-		line := fc.Name + "/" + r.Path + ": " + dryRunAction(dest, fc.Name, r, wantArchive)
+		wantArchive := cfg.archive.wants(r.Archived)
+		line := fc.Name + "/" + r.Path + ": " + dryRunAction(cfg.dest, fc.Name, r, wantArchive)
 		if wantArchive {
 			line += ", archive"
 			archived++
@@ -328,8 +347,42 @@ func dryRunForge(cmd *cobra.Command, fc ForgeConfig, dest string, state State, a
 		synced++
 	}
 
-	cmd.Printf("%s: would sync %d, skip %d, archive %d (dry run)\n", fc.Name, synced, skipped, archived)
+	summary := fmt.Sprintf("%s: would sync %d, skip %d, archive %d", fc.Name, synced, skipped, archived)
+	if cfg.pruneRemoved {
+		pruned, err := dryRunPrune(cmd, fc, cfg, runner, repos)
+		if err != nil {
+			return err
+		}
+		summary += fmt.Sprintf(", prune %d", pruned)
+	}
+	cmd.Println(summary + " (dry run)")
 	return nil
+}
+
+// dryRunPrune previews what --prune-removed would delete for fc, printing
+// one line per stale mirror and returning how many it found. Staleness is
+// judged against a full (StateAll) listing, matching Run's own behaviour --
+// fetched with a second call when cfg.state itself asked for a filtered
+// subset -- so previewing alongside --state active never previews deleting
+// an archived repository that's still on the forge, only ones actually gone.
+func dryRunPrune(cmd *cobra.Command, fc ForgeConfig, cfg dryRunConfig, runner Runner, repos []Repo) (int, error) {
+	canonical := repos
+	if cfg.state != StateAll {
+		var err error
+		canonical, err = runner.Lister.ListRepos(cmd.Context(), StateAll)
+		if err != nil {
+			return 0, fmt.Errorf("list %s: %w", fc.Name, err)
+		}
+	}
+
+	stale, err := staleMirrors(filepath.Join(cfg.dest, fc.Name), filepath.Join(cfg.archiveDir, fc.Name), canonical)
+	if err != nil {
+		return 0, fmt.Errorf("scan %s: %w", fc.Name, err)
+	}
+	for _, path := range stale {
+		cmd.Printf("%s/%s: prune\n", fc.Name, path)
+	}
+	return len(stale), nil
 }
 
 // dryRunAction reports "clone" or "update" the same way Mirror.Sync itself
@@ -341,7 +394,7 @@ func dryRunAction(dest, forge string, r Repo, wantArchive bool) string {
 		return "clone"
 	}
 
-	dir := filepath.Join(dest, forge, filepath.FromSlash(r.Path)+".git")
+	dir := mirrorPath(filepath.Join(dest, forge), r.Path)
 	if _, err := os.Stat(filepath.Join(dir, "HEAD")); err == nil {
 		return "update"
 	}

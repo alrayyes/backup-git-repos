@@ -72,7 +72,7 @@ pre-commit:
         if [ ! -d styles/proselint ]; then
           ./node_modules/@vvago/vale/bin/vale sync
         fi
-        ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules}/**' .
+        ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules,.claude}/**' .
 
     - name: hadolint
       glob: "Dockerfile"
@@ -124,7 +124,7 @@ pre-push:
       run: ./node_modules/.bin/markdownlint-cli2
 
     - name: vale
-      run: ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules}/**' .
+      run: ./node_modules/@vvago/vale/bin/vale --glob='!{styles,node_modules,.claude}/**' .
 
     - name: hadolint
       run: bun run lint:dockerfile

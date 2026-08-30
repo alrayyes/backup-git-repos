@@ -28,6 +28,10 @@ or write either out as a `.tar.gz` alongside the mirror.
   so every branch and tag survives the archive too
 - Backs up several forges in one run: GitLab instances, Forgejo instances,
   GitHub.com accounts, or a mix
+- Optionally deletes a mirror once its repository is gone upstream
+  (`--prune-removed`), so a years-long backup tree doesn't keep every
+  deleted or renamed repository forever
+- Fetches Git LFS content alongside the mirror, for repositories that use it
 
 ## Requirements
 
@@ -36,6 +40,13 @@ or write either out as a `.tar.gz` alongside the mirror.
   rather than re-implementing the protocol, which is what makes an incremental
   mirror refresh fast and the resulting `.git` directory exactly what `git
 clone` produces anywhere else.
+- **`git-lfs`**, on `PATH`, only if any repository you're backing up uses Git
+  LFS. A mirror clone brings along every commit and pointer file on its own,
+  but the LFS-tracked file contents live outside the object store git keeps
+  for everything else, fetched separately; the tool detects LFS usage per
+  repository and only reaches for `git-lfs` -- and only fails if it's
+  missing -- when a repository actually needs it, so backing up nothing but
+  ordinary repositories never needs it installed at all.
 - A personal access token for each forge you back up, with read access to
   every repository you want. See [Configuration](#configuration) for where it
   goes.
@@ -218,6 +229,11 @@ tar xzf /srv/backups/git/archive/home/team/repo.tar.gz
 git clone repo.git restored-repo
 ```
 
+If the repository used Git LFS, the restoring machine needs `git-lfs`
+installed too -- `git clone` checks out the working tree with plain pointer
+files otherwise, and `git lfs pull` afterward is what turns them into the
+real file contents, the same way it would against the original forge.
+
 ### Flags
 
 - `--config, -c`: path to the YAML config (default:
@@ -240,9 +256,19 @@ git clone repo.git restored-repo
 - `--verbose, -v`: log each repository as it starts mirroring and archiving,
   not just failures and the final summary
 - `--dry-run`: print what the run would do -- `clone` or `update` per
-  repository, plus `archive` where `--archive` selects it -- without
-  touching git or writing anything. Still needs `--dest`: telling clone
-  from update means checking what's already on disk
+  repository, plus `archive` where `--archive` selects it, and `prune`
+  where `--prune-removed` would delete a mirror -- without touching git or
+  writing anything. Still needs `--dest`: telling clone from update means
+  checking what's already on disk
+- `--prune-removed`: **deletes** a mirror (and its `.tar.gz`, if archived)
+  once its repository no longer appears on the forge at all. Off by
+  default: a run only ever adds or refreshes mirrors otherwise, and a
+  stale one -- left behind by a repository deleted or renamed upstream --
+  is only warned about by name, never touched. Staleness is always judged
+  against every repository the forge reports, not just this run's own
+  `--state` selection, so pairing this with `--state active` or
+  `--state archived` never deletes a mirror that's merely excluded by
+  that filter
 
 `run` also prints a live `<forge>: done/total` progress line to stderr while
 it works, redrawn in place — only when stderr is a terminal, since a
