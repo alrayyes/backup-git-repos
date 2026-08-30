@@ -24,13 +24,18 @@ type Remote struct {
 }
 
 // Mirror keeps a bare mirror clone of a repository up to date on disk. The
-// zero value works: it resolves git from PATH.
+// zero value works: it resolves git and git-lfs from PATH.
 type Mirror struct {
-	GitPath string
+	GitPath    string
+	GitLFSPath string
 }
 
 // Sync creates a bare mirror at dir if it doesn't exist yet, or refreshes an
 // existing one otherwise. A refresh prunes refs the remote no longer has.
+// Either way, once the ordinary git objects are in place, it fetches any
+// Git LFS content the repository uses -- LFS objects live outside git's own
+// object store, so a clone or a remote update never brings them along on
+// their own.
 func (m Mirror) Sync(ctx context.Context, r Remote, dir string) error {
 	git, err := m.gitPath()
 	if err != nil {
@@ -38,10 +43,14 @@ func (m Mirror) Sync(ctx context.Context, r Remote, dir string) error {
 	}
 
 	if _, err := os.Stat(filepath.Join(dir, "HEAD")); err == nil {
-		return m.update(ctx, git, r, dir)
+		if err := m.update(ctx, git, r, dir); err != nil {
+			return err
+		}
+	} else if err := m.clone(ctx, git, r, dir); err != nil {
+		return err
 	}
 
-	return m.clone(ctx, git, r, dir)
+	return m.syncLFS(ctx, git, r, dir)
 }
 
 // clone clones into dir+".partial" and only renames it into place once the
