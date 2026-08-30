@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"testing"
 
+	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/exec"
@@ -22,11 +23,18 @@ import (
 const rootToken = "glpat-testtesttesttesttest"
 
 // fixture is a running GitLab instance seeded with a known set of projects
-// under a "team" group: an active one carrying an extra branch and tag, an
-// archived one, and an empty one.
+// under a "team" group: an active one carrying an extra branch and tag, a
+// wiki page and a snippet, an archived one, and an empty one -- the
+// archived and empty projects carry no wiki page or snippet, which is what
+// proves neither grows an empty entry.
 type fixture struct {
 	BaseURL string
 	Token   string
+
+	// SnippetPath is the path of the snippet seeded under the active
+	// project, computed from the ID GitLab assigned it rather than
+	// hardcoded, since that ID isn't otherwise predictable.
+	SnippetPath string
 }
 
 // start boots a GitLab container, mints an API token for it, and seeds the
@@ -70,10 +78,12 @@ t.save!
 }
 
 // seed creates the group and projects every test in this package expects:
-// team/active-repo with an extra branch and tag, team/archived-repo
-// (archived after creation, since the create endpoint has no such field),
-// and team/empty-repo.
-func (f fixture) seed(t *testing.T) {
+// team/active-repo with an extra branch and tag, a wiki page and a
+// snippet; team/archived-repo (archived after creation, since the create
+// endpoint has no such field); and team/empty-repo. Neither archived-repo
+// nor empty-repo gets a wiki page or a snippet, which is what proves a
+// project with neither doesn't grow an empty entry for either.
+func (f *fixture) seed(t *testing.T) {
 	t.Helper()
 
 	var group struct {
@@ -87,6 +97,16 @@ func (f fixture) seed(t *testing.T) {
 		map[string]any{"branch": "feature", "ref": "main"}, nil)
 	f.post(t, "/api/v4/projects/team%2Factive-repo/repository/tags",
 		map[string]any{"tag_name": "v1.0.0", "ref": "main"}, nil)
+	f.post(t, "/api/v4/projects/team%2Factive-repo/wikis",
+		map[string]any{"title": "Home", "content": "hello wiki"}, nil)
+
+	var snippet struct {
+		ID int `json:"id"`
+	}
+	f.post(t, "/api/v4/projects/team%2Factive-repo/snippets",
+		map[string]any{"title": "snip", "file_name": "snip.txt", "content": "hello snippet", "visibility": "private"},
+		&snippet)
+	f.SnippetPath = fmt.Sprintf("%s/snippets/%d", backup.TestActiveRepoPath, snippet.ID)
 
 	f.post(t, "/api/v4/projects",
 		map[string]any{"name": "archived-repo", "namespace_id": group.ID, "initialize_with_readme": true}, nil)
