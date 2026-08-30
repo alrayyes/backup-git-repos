@@ -4,7 +4,6 @@ package github
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/httpauth"
 )
 
 // ErrMissingRepoScope means a classic personal access token's granted
@@ -67,7 +67,7 @@ func New(base, token string) (*Client, error) {
 func (c *Client) Remote(r backup.Repo) backup.Remote {
 	return backup.Remote{
 		CloneURL:   cloneHost.JoinPath(r.Path + ".git").String(),
-		AuthHeader: "Basic " + basicAuth(c.Token, ""),
+		AuthHeader: "Basic " + httpauth.Basic(c.Token, ""),
 	}
 }
 
@@ -190,8 +190,4 @@ func (c *Client) httpClient() *http.Client {
 		return c.HTTP
 	}
 	return http.DefaultClient
-}
-
-func basicAuth(user, password string) string {
-	return base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
 }
