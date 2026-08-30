@@ -13,8 +13,8 @@ import (
 )
 
 // Pinned by digest as well as tag: the module's own examples pin :11, so this
-// is the first thing to fail if 16.0.2 behaves differently.
-const image = "codeberg.org/forgejo/forgejo:16.0.2@sha256:2fdfe28b5c68f82f49580e227b84e2afb43af0250e0631a54a386ef3b1d9b759"
+// is the first thing to fail if 16.0.3 behaves differently.
+const image = "codeberg.org/forgejo/forgejo:16.0.3@sha256:7c4e1db440be7b2ca685b49d0d7864cdd78e92431f531bf7893659def8200fc5"
 
 func TestContainerBoots(t *testing.T) {
 	ctx := context.Background()

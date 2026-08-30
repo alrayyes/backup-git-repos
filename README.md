@@ -28,6 +28,9 @@ or write either out as a `.tar.gz` alongside the mirror.
   so every branch and tag survives the archive too
 - Backs up several forges in one run: GitLab instances, Forgejo instances,
   GitHub.com accounts, or a mix
+- Optionally deletes a mirror once its repository is gone upstream
+  (`--prune-removed`), so a years-long backup tree doesn't keep every
+  deleted or renamed repository forever
 
 ## Requirements
 
@@ -240,9 +243,19 @@ git clone repo.git restored-repo
 - `--verbose, -v`: log each repository as it starts mirroring and archiving,
   not just failures and the final summary
 - `--dry-run`: print what the run would do -- `clone` or `update` per
-  repository, plus `archive` where `--archive` selects it -- without
-  touching git or writing anything. Still needs `--dest`: telling clone
-  from update means checking what's already on disk
+  repository, plus `archive` where `--archive` selects it, and `prune`
+  where `--prune-removed` would delete a mirror -- without touching git or
+  writing anything. Still needs `--dest`: telling clone from update means
+  checking what's already on disk
+- `--prune-removed`: **deletes** a mirror (and its `.tar.gz`, if archived)
+  once its repository no longer appears on the forge at all. Off by
+  default: a run only ever adds or refreshes mirrors otherwise, and a
+  stale one -- left behind by a repository deleted or renamed upstream --
+  is only warned about by name, never touched. Staleness is always judged
+  against every repository the forge reports, not just this run's own
+  `--state` selection, so pairing this with `--state active` or
+  `--state archived` never deletes a mirror that's merely excluded by
+  that filter
 
 `run` also prints a live `<forge>: done/total` progress line to stderr while
 it works, redrawn in place — only when stderr is a terminal, since a
