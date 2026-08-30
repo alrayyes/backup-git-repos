@@ -4,7 +4,6 @@ package gitlab
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 
 	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/httpauth"
 )
 
 const pageSize = 100
@@ -40,7 +40,7 @@ func New(base, token string) (*Client, error) {
 func (c *Client) Remote(r backup.Repo) backup.Remote {
 	return backup.Remote{
 		CloneURL:   c.BaseURL.JoinPath(r.Path + ".git").String(),
-		AuthHeader: "Basic " + basicAuth("oauth2", c.Token),
+		AuthHeader: "Basic " + httpauth.Basic("oauth2", c.Token),
 	}
 }
 
@@ -140,8 +140,4 @@ func (c *Client) httpClient() *http.Client {
 		return c.HTTP
 	}
 	return http.DefaultClient
-}
-
-func basicAuth(user, password string) string {
-	return base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
 }
