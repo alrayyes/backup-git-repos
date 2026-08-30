@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -214,6 +215,71 @@ func TestRunCreatesDestParentBeforeMirroring(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Synced)
 	require.Zero(t, result.Failed)
+}
+
+// erroringLister always fails, the way a Lister does when a page fetch
+// fails partway through pagination -- every adapter returns the error
+// straight away rather than whatever pages it had already gathered, so
+// Run never sees a truncated repo set that would look like everything else
+// was deleted.
+type erroringLister struct{}
+
+var errListingFailed = errors.New("listing failed")
+
+func (erroringLister) ListRepos(context.Context, backup.State) ([]backup.Repo, error) {
+	return nil, errListingFailed
+}
+
+// TestRunDoesNotPruneWhenListingFails guards the third acceptance criterion
+// of #8: a forge API failure partway through listing must leave every
+// existing mirror on disk untouched, --prune-removed or not, rather than
+// pruning against whatever partial set a failed listing might have produced.
+func TestRunDoesNotPruneWhenListingFails(t *testing.T) {
+	dest := t.TempDir()
+	stale := backup.TestSeedStaleMirror(t, dest)
+
+	runner := backup.Runner{
+		Lister:   erroringLister{},
+		Mirrorer: fakeMirrorer{},
+		Remoter:  fakeRemoter{},
+	}
+
+	_, err := runner.Run(context.Background(), backup.Options{
+		Dest: dest, State: backup.StateAll, PruneRemoved: true,
+	})
+
+	require.ErrorIs(t, err, errListingFailed)
+	require.DirExists(t, stale)
+}
+
+// TestRunCountsMirrorPrunedEvenWhenArchiveCleanupFails guards against a
+// mirror that was genuinely, permanently deleted going unreported as pruned
+// just because its much smaller archive residue couldn't also be cleaned up
+// alongside it -- the archive path here is a non-empty directory rather
+// than a file, so os.Remove on it fails with something other than "does not
+// exist", the way a permissions problem on the real archive file would.
+func TestRunCountsMirrorPrunedEvenWhenArchiveCleanupFails(t *testing.T) {
+	dest := t.TempDir()
+	archiveDir := t.TempDir()
+	staleMirror := backup.TestSeedStaleMirror(t, dest)
+
+	staleArchiveDir := filepath.Join(archiveDir, backup.TestRemovedRepoPath+".tar.gz")
+	require.NoError(t, os.MkdirAll(filepath.Join(staleArchiveDir, "not-empty"), 0o750))
+
+	runner := backup.Runner{
+		Lister:   newFakeLister(),
+		Mirrorer: fakeMirrorer{},
+		Remoter:  fakeRemoter{},
+	}
+
+	result, err := runner.Run(context.Background(), backup.Options{
+		Dest: dest, State: backup.StateAll, ArchiveDir: archiveDir, PruneRemoved: true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Pruned)
+	require.NoDirExists(t, staleMirror)
+	require.DirExists(t, staleArchiveDir)
 }
 
 func TestRunTimeout(t *testing.T) {
