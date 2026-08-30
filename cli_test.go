@@ -424,6 +424,31 @@ func TestCLIRunDryRunOmitsPruneCountWithoutFlag(t *testing.T) {
 	require.NotContains(t, out.String(), "prune")
 }
 
+// TestCLIRunDryRunPruneIgnoresStateFilter guards dryRunPrune's own copy of
+// the fix in Runner.Run: a mirror for TestArchivedRepoPath is planted ahead
+// of a dry run scoped to --state active, which never even lists it -- if
+// dryRunPrune judged staleness against that filtered listing instead of a
+// full one, it would preview deleting a repository that's still on the
+// forge, only excluded from this particular run.
+func TestCLIRunDryRunPruneIgnoresStateFilter(t *testing.T) {
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYPRUNESTATE_TOKEN\n")
+	t.Setenv("TEST_DRYPRUNESTATE_TOKEN", "secret")
+	dest := t.TempDir()
+	archivedMirror := filepath.Join(dest, "home", backup.TestArchivedRepoPath+".git")
+	require.NoError(t, os.MkdirAll(archivedMirror, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(archivedMirror, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644))
+
+	var out bytes.Buffer
+	root := backup.NewRootCommand("test", newDryRunRunner(t))
+	root.SetOut(&out)
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", dest, "--dry-run", "--state", "active", "--prune-removed"})
+
+	require.NoError(t, root.Execute())
+
+	require.NotContains(t, out.String(), backup.TestArchivedRepoPath+": prune")
+	require.Contains(t, out.String(), "prune 0 (dry run)")
+}
+
 // perForgeLister returns a different repo per forge name, so a test can tell
 // which forge's Runner produced a given mirrored path.
 type perForgeLister struct {
