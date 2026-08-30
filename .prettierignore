@@ -5,6 +5,12 @@
 # reformatting it here would show up as noise in the next release diff.
 CHANGELOG.md
 
+# A git worktree checked out here (this session's own multi-agent isolation,
+# not project content) sits below the repo root but outside the .gitignore
+# pattern above's anchoring, and Prettier doesn't read the global
+# excludesFile the way it reads a repo-local .gitignore.
+.claude/
+
 # Biome owns every file type it supports. Prettier is here to fill the gaps,
 # and the gaps are Markdown and YAML. Listing the rest here means nobody later
 # mistakes Prettier's presence for permission to hand it the JavaScript, and
