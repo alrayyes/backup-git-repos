@@ -70,8 +70,11 @@ func TestIssueExporterPaginatesComments(t *testing.T) {
 	client, err := github.New(srv.URL, "unused")
 	require.NoError(t, err)
 
+	exp := github.NewIssueExporter(client)
+	require.Equal(t, backup.MetadataIssues, exp.Kind())
+
 	dir := t.TempDir()
-	err = github.NewIssueExporter(client).Export(t.Context(), backup.Repo{Path: "team/repo"}, dir)
+	err = exp.Export(t.Context(), backup.Repo{Path: "team/repo"}, dir)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(filepath.Join(dir, "1.json"))

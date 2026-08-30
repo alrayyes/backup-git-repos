@@ -70,8 +70,11 @@ func TestIssueExporterPaginatesComments(t *testing.T) {
 	client, err := forgejo.New(srv.URL, "unused")
 	require.NoError(t, err)
 
+	exp := forgejo.NewIssueExporter(client)
+	require.Equal(t, backup.MetadataIssues, exp.Kind())
+
 	dir := t.TempDir()
-	err = forgejo.NewIssueExporter(client).Export(t.Context(), backup.Repo{Path: "team/repo"}, dir)
+	err = exp.Export(t.Context(), backup.Repo{Path: "team/repo"}, dir)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(filepath.Join(dir, "1.json"))

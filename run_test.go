@@ -340,6 +340,59 @@ func TestRunExportsRequestedMetadataKind(t *testing.T) {
 	require.DirExists(t, filepath.Join(dest, backup.TestActiveRepoPath+".metadata", "issues"))
 }
 
+// failingExporter always fails, the way a real forge's Export does when the
+// API call behind it errors.
+type failingExporter struct{ kind backup.MetadataKind }
+
+func (e failingExporter) Kind() backup.MetadataKind { return e.kind }
+
+func (failingExporter) Export(context.Context, backup.Repo, string) error {
+	return errExportFailed
+}
+
+var errExportFailed = errors.New("export failed")
+
+func TestRunCountsMirrorFailedWhenMetadataExportFails(t *testing.T) {
+	runner := backup.Runner{
+		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+		MetadataExporters: []backup.MetadataExporter{failingExporter{kind: backup.MetadataIssues}},
+	}
+
+	result, err := runner.Run(context.Background(), backup.Options{
+		Dest: t.TempDir(), State: backup.StateActive, ExportMetadata: []backup.MetadataKind{backup.MetadataIssues},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, result.Failed)
+	require.Zero(t, result.MetadataExported)
+}
+
+// TestRunCountsMirrorFailedWhenMetadataDirCannotBeCreated guards the case
+// where exportMetadata's own os.MkdirAll fails -- here because a plain file
+// already sits where the metadata directory needs to go, the way a
+// permissions problem or an existing non-directory file at that path would
+// in the real world.
+func TestRunCountsMirrorFailedWhenMetadataDirCannotBeCreated(t *testing.T) {
+	dest := t.TempDir()
+	blocked := filepath.Join(dest, backup.TestActiveRepoPath+".metadata")
+	require.NoError(t, os.MkdirAll(filepath.Dir(blocked), 0o750))
+	require.NoError(t, os.WriteFile(blocked, []byte("not a directory"), 0o600))
+
+	exp := &recordingExporter{kind: backup.MetadataIssues}
+	runner := backup.Runner{
+		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+		MetadataExporters: []backup.MetadataExporter{exp},
+	}
+
+	result, err := runner.Run(context.Background(), backup.Options{
+		Dest: dest, State: backup.StateActive, ExportMetadata: []backup.MetadataKind{backup.MetadataIssues},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, result.Failed)
+	require.Empty(t, exp.exportedPaths(), "Export must never be called once its directory couldn't be created")
+}
+
 func TestRunSkipsMetadataExportForAnExporterOfAKindNotRequested(t *testing.T) {
 	// A Runner can carry an exporter for a kind Options.ExportMetadata
 	// didn't ask for -- #82/#83/#84 will each add their own kind to the

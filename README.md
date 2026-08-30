@@ -248,11 +248,11 @@ A bare mirror captures every commit, branch and tag, but nothing else a
 forge stores about a repository -- issues, pull/merge requests, releases,
 CI/CD config -- because none of it lives in the git history. `--export-metadata`
 is opt-in per kind, comma-separated or repeated: `--export-metadata issues`.
-Off by default, and off is exactly today's behavior -- nothing about a run
+Off by default, and off is exactly today's behaviour -- nothing about a run
 changes unless you ask for a kind by name. `issues` is the only kind this
 release supports; more (pull/merge requests, releases, CI/CD config) are
-planned as separate, later additions to the same flag, each its own
-opt-in.
+planned as separate, later additions to the same flag, opted into
+individually.
 
 Each kind lands in its own subdirectory alongside the repository's mirror,
 never inside it:
@@ -316,8 +316,8 @@ one.
 - `--export-metadata`: comma-separated or repeated; also export these kinds
   of forge metadata alongside each repository's mirror, under
   `<dest>/<repo>.metadata/<kind>/` (see [Metadata
-  export](#metadata-export)). Currently just `issues`. Off by default: a
-  run's behavior is unchanged from before this flag existed unless you name
+  export](#metadata-export)). Currently, just `issues`. Off by default: a
+  run's behaviour is unchanged from before this flag existed unless you name
   a kind
 - `--concurrency, -j`: repositories mirrored in parallel (default the number
   of CPUs)
