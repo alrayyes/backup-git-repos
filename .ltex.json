@@ -5,6 +5,7 @@
       "Forgejo",
       "GitLab",
       "Gitea",
+      "git-lfs",
       "Codecov",
       "backup-git-repos",
       "goreleaser",
