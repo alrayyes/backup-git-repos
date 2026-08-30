@@ -17,7 +17,7 @@
     "lint:dockerfile": "docker run --rm -v \"$PWD:/repo:ro\" -w /repo hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552 hadolint Dockerfile"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.8",
+    "@biomejs/biome": "2.5.10",
     "@commitlint/cli": "21.2.2",
     "@commitlint/config-conventional": "21.2.2",
     "@vvago/vale": "3.17.1",
