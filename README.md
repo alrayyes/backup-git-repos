@@ -32,6 +32,10 @@ or write either out as a `.tar.gz` alongside the mirror.
   (`--prune-removed`), so a years-long backup tree doesn't keep every
   deleted or renamed repository forever
 - Fetches Git LFS content alongside the mirror, for repositories that use it
+- On GitLab, backs up each project's wiki and snippets too -- they're their
+  own git repositories, never returned by the projects API a project itself
+  comes from, so a run mirrors them as their own entries alongside the
+  project rather than silently missing them
 
 ## Requirements
 
