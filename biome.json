@@ -6,6 +6,7 @@
       "**/*.jsonc",
       "!bun.lock",
       "!node_modules",
+      "!.claude",
       "!styles/Google",
       "!styles/proselint",
       "!**/testdata"

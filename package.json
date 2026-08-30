@@ -9,7 +9,7 @@
     "format:md:fix": "prettier --write '**/*.md'",
     "lint:md": "markdownlint-cli2",
     "lint:md:fix": "markdownlint-cli2 --fix",
-    "lint:prose": "vale sync && vale --glob='!{node_modules/**,styles/**,CHANGELOG.md}' .",
+    "lint:prose": "vale sync && vale --glob='!{node_modules/**,styles/**,.claude/**,CHANGELOG.md}' .",
     "lint:yaml": "prettier --check '**/*.{yml,yaml}'",
     "lint:yaml:fix": "prettier --write '**/*.{yml,yaml}'",
     "lint:json": "biome check",
