@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -21,6 +22,27 @@ type Client struct {
 	BaseURL *url.URL
 	Token   string
 	HTTP    *http.Client
+
+	// Logger reports a project whose wiki or snippets came back 403 --
+	// GitLab's answer both for the feature being turned off and for the
+	// token lacking permission to read it, indistinguishable from the
+	// response alone -- so a shorter backup than expected has an answer.
+	// Set via SetLogger, since the composition root builds a Client
+	// before it knows which run's logger it should use; nil defaults to
+	// slog.Default().
+	Logger *slog.Logger
+}
+
+// SetLogger implements backup.LogSetter.
+func (c *Client) SetLogger(l *slog.Logger) {
+	c.Logger = l
+}
+
+func (c *Client) logger() *slog.Logger {
+	if c.Logger != nil {
+		return c.Logger
+	}
+	return slog.Default()
 }
 
 // New builds a Client against the given base URL.
@@ -87,6 +109,20 @@ func (c *Client) listByArchived(ctx context.Context, archived bool) ([]backup.Re
 				Archived: p.Archived,
 				Empty:    p.EmptyRepo,
 			})
+
+			wiki, err := c.wikiRepo(ctx, p)
+			if err != nil {
+				return nil, err
+			}
+			if wiki != nil {
+				repos = append(repos, *wiki)
+			}
+
+			snippets, err := c.snippetRepos(ctx, p)
+			if err != nil {
+				return nil, err
+			}
+			repos = append(repos, snippets...)
 		}
 
 		if next == "" {
@@ -133,6 +169,56 @@ func (c *Client) projectsURL(page int, archived bool) *url.URL {
 	q.Set("archived", strconv.FormatBool(archived))
 	u.RawQuery = q.Encode()
 	return u
+}
+
+// projectSubURL builds the URL for one page of a per-project sub-resource
+// -- wikis, snippets -- addressed by the project's own namespaced path
+// rather than its numeric ID, the same URL-encoded-path form GitLab's API
+// accepts anywhere a project ":id" is expected.
+func (c *Client) projectSubURL(projectPath, sub string, page int) *url.URL {
+	u := c.BaseURL.JoinPath("/api/v4/projects/" + url.PathEscape(projectPath) + "/" + sub)
+	q := u.Query()
+	q.Set("per_page", strconv.Itoa(pageSize))
+	q.Set("page", strconv.Itoa(page))
+	u.RawQuery = q.Encode()
+	return u
+}
+
+// getOptional issues an authenticated GET and JSON-decodes a 200 response
+// into out, returning the x-next-page response header (empty on the last
+// page). A 403 -- GitLab's answer both for a project with the requested
+// feature (wiki, snippets) turned off, and for a token that lacks
+// permission to read it on this particular project, indistinguishable from
+// the response alone -- is treated as success with out left at its zero
+// value and no next page, since there's nothing more this client can do
+// about either case; resource and projectPath are only for the log line
+// that choice produces. Any other non-200 status is an error.
+func (c *Client) getOptional(ctx context.Context, u *url.URL, resource, projectPath string, out any) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("PRIVATE-TOKEN", c.Token)
+
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden {
+		c.logger().Info("gitlab project resource not accessible, treating as empty",
+			"resource", resource, "project", projectPath)
+		return "", nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return "", err
+	}
+	return resp.Header.Get("x-next-page"), nil
 }
 
 func (c *Client) httpClient() *http.Client {
