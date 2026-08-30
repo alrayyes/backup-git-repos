@@ -3,6 +3,7 @@ package backup
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -304,4 +305,88 @@ func skipsEmptyRepos(t *testing.T, run TestDriver) {
 
 	require.NoDirExists(t, filepath.Join(dest, TestEmptyRepoPath+".git"))
 	require.GreaterOrEqual(t, result.Skipped, 1)
+}
+
+// The issues every MetadataIssues exporter's own fixture set is expected to
+// seed on TestActiveRepoPath, on top of what TestLister already requires:
+// an open issue carrying one comment, and a closed issue carrying none, so
+// TestIssueExporter can prove both a populated comment list and #81's "an
+// issue with no comments is still written" requirement from the one
+// fixture set.
+const (
+	TestIssueOpenTitle   = "open issue"
+	TestIssueClosedTitle = "closed issue"
+	TestIssueCommentBody = "a comment on the open issue"
+)
+
+// TestIssueExporter runs the specification every MetadataIssues
+// MetadataExporter must satisfy, whether it's backed by a fake or a real
+// forge: newExporter builds the exporter under test, seeded (per the
+// TestIssueOpenTitle/TestIssueClosedTitle doc comment above) against
+// TestActiveRepoPath the same way every Lister fixture already is.
+func TestIssueExporter(t *testing.T, newExporter func(t *testing.T) MetadataExporter) {
+	t.Helper()
+
+	t.Run("reports its kind", func(t *testing.T) {
+		exp := newExporter(t)
+		require.Equal(t, MetadataIssues, exp.Kind())
+	})
+
+	t.Run("writes every issue, including one with no comments, as its own documented file", func(t *testing.T) {
+		exp := newExporter(t)
+		dir := t.TempDir()
+
+		err := exp.Export(context.Background(), Repo{Path: TestActiveRepoPath}, dir)
+		require.NoError(t, err)
+
+		issues := readIssues(t, dir)
+
+		open := findIssueByTitle(t, issues, TestIssueOpenTitle)
+		require.Equal(t, "open", open.State)
+		require.NotEmpty(t, open.Author)
+		require.False(t, open.CreatedAt.IsZero())
+		require.False(t, open.UpdatedAt.IsZero())
+		require.Nil(t, open.ClosedAt)
+		require.Len(t, open.Comments, 1)
+		require.Equal(t, TestIssueCommentBody, open.Comments[0].Body)
+		require.NotEmpty(t, open.Comments[0].Author)
+		require.False(t, open.Comments[0].CreatedAt.IsZero())
+
+		closed := findIssueByTitle(t, issues, TestIssueClosedTitle)
+		require.Equal(t, "closed", closed.State)
+		require.NotNil(t, closed.ClosedAt)
+		require.NotNil(t, closed.Comments, "an issue with no comments must still be written with an empty list, not skipped")
+		require.Empty(t, closed.Comments)
+	})
+}
+
+// readIssues reads every "*.json" file WriteIssue wrote into dir back into
+// an Issue, in no particular order.
+func readIssues(t *testing.T, dir string) []Issue {
+	t.Helper()
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+
+	issues := make([]Issue, 0, len(entries))
+	for _, e := range entries {
+		data, err := os.ReadFile(filepath.Join(dir, e.Name())) //nolint:gosec // e.Name() came straight from os.ReadDir(dir), not untrusted input
+		require.NoError(t, err)
+
+		var issue Issue
+		require.NoError(t, json.Unmarshal(data, &issue))
+		issues = append(issues, issue)
+	}
+	return issues
+}
+
+func findIssueByTitle(t *testing.T, issues []Issue, title string) Issue {
+	t.Helper()
+	for _, i := range issues {
+		if i.Title == title {
+			return i
+		}
+	}
+	t.Fatalf("no issue titled %q among %d issues", title, len(issues))
+	return Issue{}
 }

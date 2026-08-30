@@ -282,6 +282,84 @@ func TestRunCountsMirrorPrunedEvenWhenArchiveCleanupFails(t *testing.T) {
 	require.DirExists(t, staleArchiveDir)
 }
 
+// recordingExporter is a MetadataExporter that records which repository
+// paths it was asked to export, so a test can assert whether Run invoked it
+// at all -- the thing #81's "given metadata export is not enabled, behavior
+// is unchanged" acceptance criterion is actually about.
+type recordingExporter struct {
+	kind backup.MetadataKind
+
+	mu       sync.Mutex
+	exported []string
+}
+
+func (e *recordingExporter) Kind() backup.MetadataKind { return e.kind }
+
+func (e *recordingExporter) Export(_ context.Context, repo backup.Repo, dir string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.exported = append(e.exported, repo.Path)
+	return os.MkdirAll(dir, 0o750)
+}
+
+func (e *recordingExporter) exportedPaths() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]string(nil), e.exported...)
+}
+
+func TestRunSkipsMetadataExportWhenNotRequested(t *testing.T) {
+	exp := &recordingExporter{kind: backup.MetadataIssues}
+	runner := backup.Runner{
+		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+		MetadataExporters: []backup.MetadataExporter{exp},
+	}
+
+	result, err := runner.Run(context.Background(), backup.Options{Dest: t.TempDir(), State: backup.StateAll})
+	require.NoError(t, err)
+
+	require.Empty(t, exp.exportedPaths())
+	require.Zero(t, result.MetadataExported)
+}
+
+func TestRunExportsRequestedMetadataKind(t *testing.T) {
+	exp := &recordingExporter{kind: backup.MetadataIssues}
+	runner := backup.Runner{
+		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+		MetadataExporters: []backup.MetadataExporter{exp},
+	}
+
+	dest := t.TempDir()
+	result, err := runner.Run(context.Background(), backup.Options{
+		Dest: dest, State: backup.StateActive, ExportMetadata: []backup.MetadataKind{backup.MetadataIssues},
+	})
+	require.NoError(t, err)
+
+	require.Contains(t, exp.exportedPaths(), backup.TestActiveRepoPath)
+	require.Equal(t, 1, result.MetadataExported)
+	require.DirExists(t, filepath.Join(dest, backup.TestActiveRepoPath+".metadata", "issues"))
+}
+
+func TestRunSkipsMetadataExportForAnExporterOfAKindNotRequested(t *testing.T) {
+	// A Runner can carry an exporter for a kind Options.ExportMetadata
+	// didn't ask for -- #82/#83/#84 will each add their own kind to the
+	// same Runner -- and only the requested one should ever run.
+	requested := &recordingExporter{kind: backup.MetadataIssues}
+	other := &recordingExporter{kind: backup.MetadataKind("pull-requests")}
+	runner := backup.Runner{
+		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+		MetadataExporters: []backup.MetadataExporter{requested, other},
+	}
+
+	_, err := runner.Run(context.Background(), backup.Options{
+		Dest: t.TempDir(), State: backup.StateActive, ExportMetadata: []backup.MetadataKind{backup.MetadataIssues},
+	})
+	require.NoError(t, err)
+
+	require.NotEmpty(t, requested.exportedPaths())
+	require.Empty(t, other.exportedPaths())
+}
+
 func TestRunTimeout(t *testing.T) {
 	runner := backup.Runner{
 		Lister:   newFakeLister(),

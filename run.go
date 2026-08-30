@@ -76,6 +76,15 @@ type Options struct {
 	// State filter merely excluded.
 	PruneRemoved bool
 
+	// ExportMetadata selects which kinds of forge metadata -- issues today,
+	// pull/merge requests, releases and CI/CD config once #82/#83/#84 add
+	// their own MetadataExporter -- get exported alongside each mirrored
+	// repository's own bare mirror. Empty (the zero value) is metadata
+	// export disabled: a repository skipped for being empty is never
+	// mirrored either (see Run's own doc comment), so it never reaches
+	// mirrorRepo's exportMetadata step regardless of this field.
+	ExportMetadata []MetadataKind
+
 	// Progress, if set, is called every time a repository is skipped or
 	// finishes mirroring (successfully or not), reporting how many of the
 	// total have been accounted for so far. Run serializes calls to it, so
@@ -86,11 +95,12 @@ type Options struct {
 
 // Result reports what a Run did.
 type Result struct {
-	Synced   int
-	Skipped  int
-	Failed   int
-	Archived int
-	Pruned   int
+	Synced           int
+	Skipped          int
+	Failed           int
+	Archived         int
+	Pruned           int
+	MetadataExported int
 }
 
 // Runner backs up one forge: it lists repositories, then mirrors each one
@@ -99,6 +109,14 @@ type Runner struct {
 	Lister   Lister
 	Mirrorer Mirrorer
 	Remoter  Remoter
+
+	// MetadataExporters are the forge's own exporters -- one per
+	// MetadataKind it supports, issues today -- run against every
+	// non-empty repository whose kind Options.ExportMetadata selects.
+	// Wiring one in here doesn't itself turn its export on: that's
+	// Options.ExportMetadata's job, so the composition root can wire every
+	// adapter's exporters in unconditionally and let the flag decide.
+	MetadataExporters []MetadataExporter
 }
 
 // Run lists repositories filtered by opts.State and mirrors each one,
@@ -150,7 +168,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		concurrency = runtime.GOMAXPROCS(0)
 	}
 
-	var synced, skipped, failed, archived, done atomic.Int64
+	var synced, skipped, failed, archived, metadataExported, done atomic.Int64
 	total := len(repos)
 	var progressMu sync.Mutex
 	reportDone := func() {
@@ -194,6 +212,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 			if outcome.failed {
 				failed.Add(1)
 			}
+			metadataExported.Add(int64(outcome.metadataExported))
 			return nil
 		})
 	}
@@ -203,22 +222,24 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 	pruned := prune(opts, stale, log)
 
 	return Result{
-		Synced:   int(synced.Load()),
-		Skipped:  int(skipped.Load()),
-		Failed:   int(failed.Load()),
-		Archived: int(archived.Load()),
-		Pruned:   pruned,
+		Synced:           int(synced.Load()),
+		Skipped:          int(skipped.Load()),
+		Failed:           int(failed.Load()),
+		Archived:         int(archived.Load()),
+		Pruned:           pruned,
+		MetadataExported: int(metadataExported.Load()),
 	}, nil
 }
 
 // mirrorOutcome reports what mirrorRepo actually did, so Run's caller can
 // update its own counters without repeating mirrorRepo's stage-by-stage
 // logic: a repository can be synced and still count as failed, when
-// archiving it afterwards is what went wrong.
+// archiving or exporting metadata for it afterwards is what went wrong.
 type mirrorOutcome struct {
-	synced   bool
-	archived bool
-	failed   bool
+	synced           bool
+	archived         bool
+	failed           bool
+	metadataExported int
 }
 
 // mirrorRepo mirrors one repository, and archives it too if wantArchive
@@ -255,18 +276,57 @@ func (r Runner) mirrorRepo(ctx context.Context, opts Options, repo Repo, log *sl
 		return mirrorOutcome{failed: true}
 	}
 
+	outcome := mirrorOutcome{synced: true}
+	outcome.metadataExported, outcome.failed = r.exportMetadata(ctx, opts, repo, log)
+
 	if !wantArchive {
-		return mirrorOutcome{synced: true}
+		return outcome
 	}
 
 	archiveOut := archivePath(opts.ArchiveDir, repo.Path)
 	log.Debug("archiving", "path", repo.Path)
 	if err := archiveRepo(dir, archiveOut); err != nil {
 		log.Error("archive failed", "path", repo.Path, "error", err)
-		return mirrorOutcome{synced: true, failed: true}
+		outcome.failed = true
+		return outcome
 	}
 
-	return mirrorOutcome{synced: true, archived: true}
+	outcome.archived = true
+	return outcome
+}
+
+// exportMetadata runs every one of r.MetadataExporters whose Kind
+// opts.ExportMetadata selected, each into its own sibling directory under
+// metadataDir(opts.Dest, repo.Path) -- see MetadataExporter's own doc
+// comment for the full on-disk convention. It always writes under
+// opts.Dest, never a scratch directory, even for an archived repository
+// mirrored into one (see mirrorRepo above): exported metadata isn't part of
+// the git mirror, so it isn't something --archive's "no persisted mirror"
+// choice applies to. One exporter failing is logged and doesn't stop the
+// rest, the same "one repository's problem doesn't stop the run" shape
+// mirrorRepo already gives archiving.
+func (r Runner) exportMetadata(ctx context.Context, opts Options, repo Repo, log *slog.Logger) (exported int, failed bool) {
+	for _, exp := range r.MetadataExporters {
+		if !wantsMetadata(opts.ExportMetadata, exp.Kind()) {
+			continue
+		}
+
+		dir := filepath.Join(metadataDir(opts.Dest, repo.Path), string(exp.Kind()))
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			log.Error("metadata export failed", "path", repo.Path, "kind", exp.Kind(), "error", err)
+			failed = true
+			continue
+		}
+
+		log.Debug("exporting metadata", "path", repo.Path, "kind", exp.Kind())
+		if err := exp.Export(ctx, repo, dir); err != nil {
+			log.Error("metadata export failed", "path", repo.Path, "kind", exp.Kind(), "error", err)
+			failed = true
+			continue
+		}
+		exported++
+	}
+	return exported, failed
 }
 
 // prune acts on the stale paths staleMirrors already found, either removing
