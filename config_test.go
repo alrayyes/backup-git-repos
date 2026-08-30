@@ -206,6 +206,21 @@ forges:
 	require.ErrorIs(t, err, backup.ErrAmbiguousCredential)
 }
 
+func TestLoadConfigErrorsOnSSHHostForGithub(t *testing.T) {
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: personal
+    kind: github
+    ssh_key: /home/me/.ssh/deploy_key
+    ssh_host: git.example.org:2222
+`)
+
+	_, err := backup.LoadConfig(path)
+
+	require.ErrorIs(t, err, backup.ErrSSHHostNotSupported)
+}
+
 func TestLoadConfigErrorsOnUnknownKind(t *testing.T) {
 	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
 	path := writeConfig(t, `

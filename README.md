@@ -208,8 +208,9 @@ else, host and port together:
 ssh_host: git.example.org:2222
 ```
 
-GitHub.com always clones over SSH as `git@github.com`, so a `github` entry
-ignores `ssh_host` -- only its own fixed host makes sense there.
+GitHub.com always clones over SSH as `git@github.com`, so setting `ssh_host`
+on a `github` entry is a config error rather than a silently ignored field
+-- only its own fixed host makes sense there.
 
 A key with a passphrase still has to clone non-interactively -- a run must
 never block waiting on a prompt nothing answers. Two ways to give it one:

@@ -29,6 +29,12 @@ var ErrAmbiguousCredential = errors.New("set exactly one of ssh_key or token/tok
 // environment variable that isn't set.
 var ErrMissingSSHKeyPassphrase = errors.New("ssh key passphrase environment variable not set")
 
+// ErrSSHHostNotSupported means a github forge set ssh_host. github.com
+// always clones over SSH from its own fixed host, so the field would
+// otherwise be silently ignored rather than doing what it looks like it
+// does -- the same "fail loud, not quiet" reasoning as ErrAmbiguousToken.
+var ErrSSHHostNotSupported = errors.New("ssh_host is only supported for gitlab and forgejo forges")
+
 // UnknownKindError means a forge's kind isn't one backup-git-repos knows how
 // to talk to.
 type UnknownKindError struct {
@@ -107,40 +113,57 @@ func LoadConfig(path string) (Config, error) {
 		if !knownForgeKinds[f.Kind] {
 			return Config{}, fmt.Errorf("forge %q: %w", f.Name, &UnknownKindError{Kind: f.Kind})
 		}
-
-		usesSSHKey := f.SSHKeyPath != ""
-		usesToken := f.TokenLiteral != "" || f.TokenEnv != ""
-		if usesSSHKey && usesToken {
-			return Config{}, fmt.Errorf("forge %q: %w", f.Name, ErrAmbiguousCredential)
+		if f.Kind == "github" && f.SSHHost != "" {
+			return Config{}, fmt.Errorf("forge %q: %w", f.Name, ErrSSHHostNotSupported)
 		}
 
-		if usesSSHKey {
-			if f.SSHKeyPassphraseEnv == "" {
-				continue
-			}
-			passphrase, ok := os.LookupEnv(f.SSHKeyPassphraseEnv)
-			if !ok {
-				return Config{}, fmt.Errorf("forge %q: %w: %s", f.Name, ErrMissingSSHKeyPassphrase, f.SSHKeyPassphraseEnv)
-			}
-			cfg.Forges[i].SSHKeyPassphrase = passphrase
-			continue
+		resolved, err := resolveCredential(f)
+		if err != nil {
+			return Config{}, fmt.Errorf("forge %q: %w", f.Name, err)
 		}
-
-		if f.TokenLiteral != "" && f.TokenEnv != "" {
-			return Config{}, fmt.Errorf("forge %q: %w", f.Name, ErrAmbiguousToken)
-		}
-
-		if f.TokenLiteral != "" {
-			cfg.Forges[i].Token = f.TokenLiteral
-			continue
-		}
-
-		token, ok := os.LookupEnv(f.TokenEnv)
-		if !ok {
-			return Config{}, fmt.Errorf("forge %q: %w: %s", f.Name, ErrMissingToken, f.TokenEnv)
-		}
-		cfg.Forges[i].Token = token
+		cfg.Forges[i] = resolved
 	}
 
 	return cfg, nil
+}
+
+// resolveCredential validates f's credential fields and returns f with
+// whichever one it set resolved to an actual value: Token from
+// TokenLiteral/TokenEnv, or SSHKeyPassphrase from SSHKeyPassphraseEnv --
+// never both, and never read as bare TokenEnv/SSHKeyPassphraseEnv names
+// past this point, so every other place a ForgeConfig reaches has gone
+// through the same validation regardless of which form the file used.
+func resolveCredential(f ForgeConfig) (ForgeConfig, error) {
+	usesSSHKey := f.SSHKeyPath != ""
+	usesToken := f.TokenLiteral != "" || f.TokenEnv != ""
+	if usesSSHKey && usesToken {
+		return ForgeConfig{}, ErrAmbiguousCredential
+	}
+
+	if usesSSHKey {
+		if f.SSHKeyPassphraseEnv == "" {
+			return f, nil
+		}
+		passphrase, ok := os.LookupEnv(f.SSHKeyPassphraseEnv)
+		if !ok {
+			return ForgeConfig{}, fmt.Errorf("%w: %s", ErrMissingSSHKeyPassphrase, f.SSHKeyPassphraseEnv)
+		}
+		f.SSHKeyPassphrase = passphrase
+		return f, nil
+	}
+
+	if f.TokenLiteral != "" && f.TokenEnv != "" {
+		return ForgeConfig{}, ErrAmbiguousToken
+	}
+	if f.TokenLiteral != "" {
+		f.Token = f.TokenLiteral
+		return f, nil
+	}
+
+	token, ok := os.LookupEnv(f.TokenEnv)
+	if !ok {
+		return ForgeConfig{}, fmt.Errorf("%w: %s", ErrMissingToken, f.TokenEnv)
+	}
+	f.Token = token
+	return f, nil
 }
