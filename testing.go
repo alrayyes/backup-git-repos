@@ -1,7 +1,10 @@
 package backup
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -110,6 +113,115 @@ func TestBackup(t *testing.T, run TestDriver) {
 	t.Run("does not persist a mirror for an archived repo that gets archived", func(t *testing.T) {
 		doesNotPersistMirrorForArchivedRepo(t, run)
 	})
+	t.Run("leaves a removed repository's mirror alone without --prune-removed", func(t *testing.T) {
+		leavesRemovedMirrorAloneWithoutFlag(t, run)
+	})
+	t.Run("warns about a removed repository's mirror without --prune-removed", func(t *testing.T) {
+		warnsAboutRemovedMirrorWithoutFlag(t, run)
+	})
+	t.Run("prunes a removed repository's mirror and archive with --prune-removed", func(t *testing.T) {
+		prunesRemovedMirrorWithFlag(t, run)
+	})
+	t.Run("does not prune a mirror merely excluded by --state", func(t *testing.T) {
+		doesNotPruneMirrorExcludedByState(t, run)
+	})
+}
+
+// TestRemovedRepoPath is a repository path no fixture set seeds -- every
+// suite's Lister reports the fixed TestActiveRepoPath/TestArchivedRepoPath/
+// TestEmptyRepoPath set and nothing under "team/removed-repo", so a mirror
+// or archive planted at this path ahead of a run is exactly what a
+// repository deleted or renamed upstream since the last run looks like.
+const TestRemovedRepoPath = "team/removed-repo"
+
+// TestSeedStaleMirror creates a mirror directory at dest for
+// TestRemovedRepoPath, the way a previous run would have left one for a
+// repository that has since been deleted or renamed upstream. Exported for
+// the same reason as TestLister/TestBackup: a test outside this package (an
+// adapter under internal/, or this package's own external test package)
+// needs it too.
+func TestSeedStaleMirror(t *testing.T, dest string) string {
+	t.Helper()
+	dir := filepath.Join(dest, TestRemovedRepoPath+".git")
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o600))
+	return dir
+}
+
+// TestSeedStaleArchive creates an archive tarball at archiveDir for
+// TestRemovedRepoPath, the way --archive would have left one for a
+// repository that has since been deleted or renamed upstream.
+func TestSeedStaleArchive(t *testing.T, archiveDir string) string {
+	t.Helper()
+	file := filepath.Join(archiveDir, TestRemovedRepoPath+".tar.gz")
+	require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o750))
+	require.NoError(t, os.WriteFile(file, []byte("not a real tarball"), 0o600))
+	return file
+}
+
+func leavesRemovedMirrorAloneWithoutFlag(t *testing.T, run TestDriver) {
+	t.Helper()
+	dest := t.TempDir()
+	stale := TestSeedStaleMirror(t, dest)
+
+	_, err := run(context.Background(), Options{Dest: dest, State: StateAll})
+	require.NoError(t, err)
+
+	require.DirExists(t, stale)
+}
+
+func warnsAboutRemovedMirrorWithoutFlag(t *testing.T, run TestDriver) {
+	t.Helper()
+	dest := t.TempDir()
+	TestSeedStaleMirror(t, dest)
+
+	var logs bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logs, nil))
+
+	_, err := run(context.Background(), Options{Dest: dest, State: StateAll, Log: log})
+	require.NoError(t, err)
+
+	require.Contains(t, logs.String(), TestRemovedRepoPath)
+	require.Contains(t, logs.String(), "level=WARN")
+}
+
+func prunesRemovedMirrorWithFlag(t *testing.T, run TestDriver) {
+	t.Helper()
+	dest := t.TempDir()
+	archiveDir := t.TempDir()
+	staleMirror := TestSeedStaleMirror(t, dest)
+	staleArchive := TestSeedStaleArchive(t, archiveDir)
+
+	result, err := run(context.Background(), Options{
+		Dest: dest, State: StateAll, ArchiveDir: archiveDir, PruneRemoved: true,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, 1, result.Pruned)
+	require.NoDirExists(t, staleMirror)
+	require.NoFileExists(t, staleArchive)
+
+	// A repository the Lister still reports is left alone.
+	require.FileExists(t, filepath.Join(dest, TestActiveRepoPath+".git", "HEAD"))
+}
+
+// doesNotPruneMirrorExcludedByState plants a mirror for TestArchivedRepoPath
+// -- a repository the fixture set genuinely still reports, just not under
+// StateActive -- and runs with State: StateActive and PruneRemoved: true.
+// Staleness has to be judged against a full listing regardless of State, or
+// this would read as "gone" and prune it, when it was only excluded from
+// this run's own mirroring pass.
+func doesNotPruneMirrorExcludedByState(t *testing.T, run TestDriver) {
+	t.Helper()
+	dest := t.TempDir()
+	archivedMirror := filepath.Join(dest, TestArchivedRepoPath+".git")
+	require.NoError(t, os.MkdirAll(archivedMirror, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(archivedMirror, "HEAD"), []byte("ref: refs/heads/main\n"), 0o600))
+
+	_, err := run(context.Background(), Options{Dest: dest, State: StateActive, PruneRemoved: true})
+	require.NoError(t, err)
+
+	require.DirExists(t, archivedMirror)
 }
 
 func backsUpActiveRepos(t *testing.T, run TestDriver) {
