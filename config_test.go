@@ -122,6 +122,90 @@ forges:
 	require.ErrorIs(t, err, backup.ErrAmbiguousToken)
 }
 
+func TestLoadConfigReadsSSHKey(t *testing.T) {
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    ssh_key: /home/me/.ssh/deploy_key
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.Equal(t, "/home/me/.ssh/deploy_key", cfg.Forges[0].SSHKeyPath)
+	require.Empty(t, cfg.Forges[0].Token)
+}
+
+func TestLoadConfigResolvesSSHKeyPassphrase(t *testing.T) {
+	t.Setenv("TEST_SSH_PASSPHRASE", "hunter2")
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    ssh_key: /home/me/.ssh/deploy_key
+    ssh_key_passphrase_env: TEST_SSH_PASSPHRASE
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.Equal(t, "hunter2", cfg.Forges[0].SSHKeyPassphrase)
+}
+
+func TestLoadConfigErrorsOnMissingSSHKeyPassphrase(t *testing.T) {
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    ssh_key: /home/me/.ssh/deploy_key
+    ssh_key_passphrase_env: TEST_SSH_PASSPHRASE_UNSET
+`)
+
+	_, err := backup.LoadConfig(path)
+
+	require.ErrorIs(t, err, backup.ErrMissingSSHKeyPassphrase)
+}
+
+func TestLoadConfigErrorsWhenBothSSHKeyAndTokenSet(t *testing.T) {
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    ssh_key: /home/me/.ssh/deploy_key
+    token: literal-secret
+`)
+
+	_, err := backup.LoadConfig(path)
+
+	require.ErrorIs(t, err, backup.ErrAmbiguousCredential)
+}
+
+func TestLoadConfigErrorsWhenBothSSHKeyAndTokenEnvSet(t *testing.T) {
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    ssh_key: /home/me/.ssh/deploy_key
+    token_env: TEST_FORGEJO_TOKEN
+`)
+
+	_, err := backup.LoadConfig(path)
+
+	require.ErrorIs(t, err, backup.ErrAmbiguousCredential)
+}
+
 func TestLoadConfigErrorsOnUnknownKind(t *testing.T) {
 	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
 	path := writeConfig(t, `
