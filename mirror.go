@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // ErrGitNotFound means git isn't on PATH.
@@ -109,7 +110,7 @@ func (m Mirror) gitPath() (string, error) {
 // persisted to disk. The header is scoped to the remote's own scheme and
 // host, so it's never sent anywhere else even if git follows a redirect.
 func credentialEnv(r Remote) ([]string, error) {
-	env := append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	env := append(gitEnv(), "GIT_TERMINAL_PROMPT=0")
 	if r.AuthHeader == "" {
 		return env, nil
 	}
@@ -124,4 +125,25 @@ func credentialEnv(r Remote) ([]string, error) {
 		"GIT_CONFIG_KEY_0=http."+u.Scheme+"://"+u.Host+"/.extraHeader",
 		"GIT_CONFIG_VALUE_0=Authorization: "+r.AuthHeader,
 	), nil
+}
+
+// gitEnv is the process environment with any inherited GIT_DIR,
+// GIT_WORK_TREE or GIT_INDEX_FILE stripped. Git sets those for a hook's own
+// process -- this project's own pre-push included -- and left in place
+// they override every "-C dir" a git subprocess here is given, silently
+// pointing a clone, an update, or an LFS check at whatever repository ran
+// the hook instead of the one actually being mirrored.
+func gitEnv() []string {
+	env := os.Environ()
+	filtered := env[:0]
+	for _, kv := range env {
+		switch {
+		case strings.HasPrefix(kv, "GIT_DIR="),
+			strings.HasPrefix(kv, "GIT_WORK_TREE="),
+			strings.HasPrefix(kv, "GIT_INDEX_FILE="):
+			continue
+		}
+		filtered = append(filtered, kv)
+	}
+	return filtered
 }

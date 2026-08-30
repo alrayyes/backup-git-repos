@@ -81,6 +81,7 @@ func usesLFS(ctx context.Context, git, dir string) (bool, error) {
 
 	//nolint:gosec // argv, not a shell -- git, dir and refs never pass through shell interpretation
 	cmd := exec.CommandContext(ctx, git, args...)
+	cmd.Env = gitEnv()
 	switch err := cmd.Run(); {
 	case err == nil:
 		return true, nil
@@ -102,6 +103,7 @@ func isGrepNoMatch(err error) bool {
 func refTips(ctx context.Context, git, dir string) ([]string, error) {
 	//nolint:gosec // argv, not a shell -- git and dir never pass through shell interpretation
 	cmd := exec.CommandContext(ctx, git, "-C", dir, "for-each-ref", "--format=%(objectname)")
+	cmd.Env = gitEnv()
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("list refs: %w", err)
