@@ -9,7 +9,11 @@ recorded below.
 
 ## What you need
 
-Running the tool needs Go and `git` on `PATH`. Working on it needs:
+Running the tool needs Go, `git`, and `ssh` on `PATH` -- the last one only
+matters for a forge configured with `ssh_key`, but `mirror_ssh_test.go`'s
+own fast-lane suite exercises the SSH path against a throwaway in-process
+server on every `go test ./...`, so it's needed for the fast suite too, not
+just a real run. Working on it needs:
 
 - **Go 1.26** or newer, and **golangci-lint 2.x** — the linter and the fixer
   both.

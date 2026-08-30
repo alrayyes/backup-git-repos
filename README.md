@@ -35,10 +35,13 @@ or write either out as a `.tar.gz` alongside the mirror.
 - **git**, on `PATH`, to do the actual cloning. The tool shells out to it
   rather than re-implementing the protocol, which is what makes an incremental
   mirror refresh fast and the resulting `.git` directory exactly what `git
-clone` produces anywhere else.
+clone` produces anywhere else. A forge configured with `ssh_key` (see
+  [Configuration](#configuration)) needs `ssh` on `PATH` too -- git shells
+  out to that in turn for the actual SSH transport.
 - A personal access token for each forge you back up, with read access to
-  every repository you want. See [Configuration](#configuration) for where it
-  goes.
+  every repository you want, or an SSH deploy key as the alternative to a
+  token for the actual clone. See [Configuration](#configuration) for where
+  either goes.
 - Somewhere to write the backup tree. It grows to roughly the size of every
   repository you're backing up, twice over if you also enable `.tar.gz`
   archives.
@@ -178,6 +181,68 @@ forges:
 ```bash
 export WORK_GITLAB_TOKEN=glpat-...
 ```
+
+### Cloning over SSH with a deploy key instead of a token
+
+A `gitlab` or `forgejo` entry can set `ssh_key` instead of `token`/`token_env`:
+the path to a private key, and the repository mirrors over SSH with it rather
+than HTTPS with a token, with no token involved in the clone at all. Setting
+`ssh_key` alongside `token`/`token_env` on the same entry is a config error,
+the same as setting both `token` and `token_env`.
+
+```yaml
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    ssh_key: /home/me/.ssh/backup_deploy_key
+```
+
+By default the tool clones from the same host as `url`, on the standard SSH
+port 22, as the `git` user -- the convention every self-hosted GitLab and
+Forgejo instance follows even when its web UI runs on a different HTTPS
+port. `ssh_host` overrides that for an instance that serves SSH somewhere
+else, host and port together:
+
+```yaml
+ssh_host: git.example.org:2222
+```
+
+GitHub.com always clones over SSH as `git@github.com`, so a `github` entry
+ignores `ssh_host` -- only its own fixed host makes sense there.
+
+A key with a passphrase still has to clone non-interactively -- a run must
+never block waiting on a prompt nothing answers. Two ways to give it one:
+
+- **An SSH agent.** If the key is already unlocked in one (`SSH_AUTH_SOCK`
+  set and the key added with `ssh-add`), the tool uses that automatically
+  and never touches the passphrase itself.
+- **`ssh_key_passphrase_env`**, the name of an environment variable holding
+  the passphrase, read once at startup the same way `token_env` reads a
+  token:
+
+  ```yaml
+  ssh_key_passphrase_env: BACKUP_DEPLOY_KEY_PASSPHRASE
+  ```
+
+  ```bash
+  export BACKUP_DEPLOY_KEY_PASSPHRASE=...
+  ```
+
+Leave `ssh_key_passphrase_env` unset for a key with no passphrase. Either
+way, the passphrase never touches disk or a subprocess's command line --
+the same care the preceding token gets.
+
+**Listing still needs its own credential.** `ssh_key` only changes how a
+repository is _cloned_; the account-wide listing API every `Lister` calls
+still authenticates the way it always did, and with no token configured
+that means an unauthenticated request. That works against a self-hosted
+instance that permits listing public repositories without one; it doesn't
+against GitHub.com or a private GitLab/Forgejo project, which both need
+authenticated access just to see what exists. Letting `token`/`token_env`
+stay configured for listing while `ssh_key` covers the clone is real,
+useful follow-up scope, not implemented here -- tracked as
+[issue #85](https://github.com/alrayyes/backup-git-repos/issues/85).
 
 ## Usage
 
