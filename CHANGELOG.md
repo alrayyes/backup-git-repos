@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0](https://github.com/alrayyes/backup-git-repos/compare/v1.4.2...v1.5.0) (2026-08-30)
+
+
+### Features
+
+* add --prune-removed for repositories deleted upstream ([#87](https://github.com/alrayyes/backup-git-repos/issues/87)) ([d8e6ba4](https://github.com/alrayyes/backup-git-repos/commit/d8e6ba418ce682b04dee5122062931c63757e1b5))
+* fetch Git LFS content alongside a mirror ([#89](https://github.com/alrayyes/backup-git-repos/issues/89)) ([853ef49](https://github.com/alrayyes/backup-git-repos/commit/853ef4942ae21b05e8f26a95b48d8b1517d10864))
+* **gitlab:** back up project wikis and snippets ([#93](https://github.com/alrayyes/backup-git-repos/issues/93)) ([822129c](https://github.com/alrayyes/backup-git-repos/commit/822129cc7cbc02a4d325fb9e242e9993705826d7))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/stretchr/testify from 1.12.0 to 1.12.1 ([#70](https://github.com/alrayyes/backup-git-repos/issues/70)) ([b9505d9](https://github.com/alrayyes/backup-git-repos/commit/b9505d9d0cd7085ac93cc53cf35858e8cdd703d4))
+
 ## [1.4.2](https://github.com/alrayyes/backup-git-repos/compare/v1.4.1...v1.4.2) (2026-08-21)
 
 
