@@ -9,13 +9,27 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/alrayyes/backup-git-repos/internal/httpauth"
+	"golang.org/x/sync/errgroup"
 )
 
 const pageSize = 100
+
+// projectDetailConcurrency bounds how many projects' wiki and snippet
+// lookups run in flight at once within one page of listByArchived. A
+// listing page can hold up to pageSize (100) projects, and issuing all of
+// their wiki/snippet requests at once would trade a serial bottleneck for
+// a thundering herd against the same GitLab instance -- the ceiling that
+// actually matters here is the forge's own API rate limit, not this
+// process's CPU count, so this is a fixed modest constant rather than
+// something scaled to runtime.GOMAXPROCS(0) the way mirror concurrency is
+// in run.go. 10 mirrors the concurrency Options.Concurrency in run.go
+// tends to land on for a typical machine, without depending on one.
+const projectDetailConcurrency = 10
 
 // Client lists and mirrors repositories from a self-hosted GitLab instance.
 type Client struct {
@@ -103,32 +117,80 @@ func (c *Client) listByArchived(ctx context.Context, archived bool) ([]backup.Re
 			return nil, err
 		}
 
-		for _, p := range projects {
-			repos = append(repos, backup.Repo{
-				Path:     p.PathWithNamespace,
-				Archived: p.Archived,
-				Empty:    p.EmptyRepo,
-			})
-
-			wiki, err := c.wikiRepo(ctx, p)
-			if err != nil {
-				return nil, err
-			}
-			if wiki != nil {
-				repos = append(repos, *wiki)
-			}
-
-			snippets, err := c.snippetRepos(ctx, p)
-			if err != nil {
-				return nil, err
-			}
-			repos = append(repos, snippets...)
+		pageRepos, err := c.projectRepos(ctx, projects)
+		if err != nil {
+			return nil, err
 		}
+		repos = append(repos, pageRepos...)
 
 		if next == "" {
 			break
 		}
 	}
+
+	return repos, nil
+}
+
+// projectRepos resolves one page's worth of projects into their Repos --
+// the project itself plus its wiki and snippets, if any -- fetching each
+// project's wiki and snippet lookups concurrently, bounded by
+// projectDetailConcurrency, instead of one project at a time. A failure on
+// any project aborts the rest and is returned the same way a page fetch
+// failure already was: errgroup.WithContext cancels every other project's
+// in-flight request and Wait still blocks until each of them has actually
+// returned, so nothing is left running in the background.
+//
+// Each project's own three-part result (itself, its wiki, its snippets)
+// lands at a slot reserved for it up front, so the final order is the
+// same page order callers already saw from the serial implementation,
+// even though the requests that filled those slots ran out of order.
+func (c *Client) projectRepos(ctx context.Context, projects []project) ([]backup.Repo, error) {
+	results := make([][]backup.Repo, len(projects))
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(projectDetailConcurrency)
+
+	for i, p := range projects {
+		g.Go(func() error {
+			repos, err := c.projectDetail(ctx, p)
+			if err != nil {
+				return err
+			}
+			results[i] = repos
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return slices.Concat(results...), nil
+}
+
+// projectDetail returns project p itself, followed by its wiki and its
+// snippets if it has either -- the per-project unit of work projectRepos
+// runs concurrently across a page.
+func (c *Client) projectDetail(ctx context.Context, p project) ([]backup.Repo, error) {
+	repos := []backup.Repo{{
+		Path:     p.PathWithNamespace,
+		Archived: p.Archived,
+		Empty:    p.EmptyRepo,
+	}}
+
+	wiki, err := c.wikiRepo(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	if wiki != nil {
+		repos = append(repos, *wiki)
+	}
+
+	snippets, err := c.snippetRepos(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	repos = append(repos, snippets...)
 
 	return repos, nil
 }
