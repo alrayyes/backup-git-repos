@@ -99,6 +99,7 @@ func (f *fixture) seed(t *testing.T) {
 		map[string]any{"tag_name": "v1.0.0", "ref": "main"}, nil)
 	f.post(t, "/api/v4/projects/team%2Factive-repo/wikis",
 		map[string]any{"title": "Home", "content": "hello wiki"}, nil)
+	f.seedIssues(t)
 
 	var snippet struct {
 		ID int `json:"id"`
@@ -116,11 +117,45 @@ func (f *fixture) seed(t *testing.T) {
 		map[string]any{"name": "empty-repo", "namespace_id": group.ID}, nil)
 }
 
+// seedIssues creates the two issues backup.TestIssueExporter expects on
+// team/active-repo: an open one carrying one comment
+// (backup.TestIssueCommentBody), and a closed one carrying none -- proving
+// both a populated comment list and #81's "an issue with no comments is
+// still written" requirement from the one fixture set. Notes' own "system"
+// note GitLab generates for the state-close ("changed status to closed")
+// is left in place deliberately: IssueExporter is expected to filter it out
+// on its own, and this fixture is what proves that rather than assuming it.
+func (f fixture) seedIssues(t *testing.T) {
+	t.Helper()
+
+	var open struct {
+		IID int `json:"iid"`
+	}
+	f.post(t, "/api/v4/projects/team%2Factive-repo/issues",
+		map[string]any{"title": backup.TestIssueOpenTitle, "description": "please fix this"}, &open)
+	f.post(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/issues/%d/notes", open.IID),
+		map[string]any{"body": backup.TestIssueCommentBody}, nil)
+
+	var closed struct {
+		IID int `json:"iid"`
+	}
+	f.post(t, "/api/v4/projects/team%2Factive-repo/issues",
+		map[string]any{"title": backup.TestIssueClosedTitle, "description": "already handled"}, &closed)
+	f.put(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/issues/%d", closed.IID),
+		map[string]any{"state_event": "close"})
+}
+
 // post sends an authenticated JSON POST and requires a 2xx response,
 // decoding the body into out when it's non-nil.
 func (f fixture) post(t *testing.T, path string, body, out any) {
 	t.Helper()
 	f.do(t, http.MethodPost, path, body, out)
+}
+
+// put sends an authenticated JSON PUT and requires a 2xx response.
+func (f fixture) put(t *testing.T, path string, body any) {
+	t.Helper()
+	f.do(t, http.MethodPut, path, body, nil)
 }
 
 func (f fixture) do(t *testing.T, method, path string, body, out any) {

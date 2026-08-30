@@ -1,0 +1,7 @@
+[
+  {
+    "user": { "login": "bob" },
+    "body": "a comment on the open issue",
+    "created_at": "2026-08-15T08:30:00Z"
+  }
+]
