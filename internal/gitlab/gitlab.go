@@ -21,6 +21,17 @@ type Client struct {
 	BaseURL *url.URL
 	Token   string
 	HTTP    *http.Client
+
+	// SSHKey, when set, makes Remote return an SSH clone URL and this key
+	// instead of an HTTPS one authenticated with Token -- the two are
+	// mutually exclusive by construction, enforced in backup.LoadConfig
+	// before a Client is even built.
+	SSHKey *backup.SSHKey
+
+	// SSHHost overrides the host[:port] Remote clones over SSH from. Empty
+	// defaults to BaseURL's own host on the standard port 22 -- see
+	// sshCloneURL.
+	SSHHost string
 }
 
 // New builds a Client against the given base URL.
@@ -36,12 +47,33 @@ func New(base, token string) (*Client, error) {
 // configured base URL rather than the API's own http_url_to_repo, which can
 // report a host or port the caller can't actually reach. The oauth2 user
 // with the token as password is GitLab's documented form for authenticating
-// git-http operations with a personal access token.
+// git-http operations with a personal access token. With SSHKey set, it
+// returns an SSH clone URL and the key instead, with no token involved.
 func (c *Client) Remote(r backup.Repo) backup.Remote {
+	if c.SSHKey != nil {
+		return backup.Remote{
+			CloneURL: c.sshCloneURL(r),
+			SSHKey:   c.SSHKey,
+		}
+	}
 	return backup.Remote{
 		CloneURL:   c.BaseURL.JoinPath(r.Path + ".git").String(),
 		AuthHeader: "Basic " + basicAuth("oauth2", c.Token),
 	}
+}
+
+// sshCloneURL builds the ssh:// clone URL for r. GitLab conventionally
+// serves git-over-ssh as the "git" user on the standard port 22 of the same
+// host as the web UI, even when the web UI itself runs on a different
+// HTTPS port, so that's the default -- SSHHost overrides it for an instance
+// that doesn't follow the convention.
+func (c *Client) sshCloneURL(r backup.Repo) string {
+	host := c.SSHHost
+	if host == "" {
+		host = c.BaseURL.Hostname()
+	}
+	u := &url.URL{Scheme: "ssh", User: url.User("git"), Host: host}
+	return u.JoinPath(r.Path + ".git").String()
 }
 
 type project struct {

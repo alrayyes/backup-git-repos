@@ -41,11 +41,21 @@ const (
 // serves git and the web UI from (github.com).
 var cloneHost = &url.URL{Scheme: "https", Host: "github.com"}
 
+// sshCloneHost mirrors cloneHost, but for git-over-ssh: GitHub.com serves it
+// as the "git" user on the standard port, the same for every account.
+var sshCloneHost = &url.URL{Scheme: "ssh", User: url.User("git"), Host: "github.com"}
+
 // Client lists and mirrors repositories from GitHub.com.
 type Client struct {
 	BaseURL *url.URL
 	Token   string
 	HTTP    *http.Client
+
+	// SSHKey, when set, makes Remote return an SSH clone URL and this key
+	// instead of an HTTPS one authenticated with Token -- the two are
+	// mutually exclusive by construction, enforced in backup.LoadConfig
+	// before a Client is even built.
+	SSHKey *backup.SSHKey
 }
 
 // New builds a Client. An empty base uses GitHub.com's own API host; a test
@@ -63,8 +73,15 @@ func New(base, token string) (*Client, error) {
 
 // Remote implements backup.Remoter. GitHub accepts a personal access token
 // as the Basic auth username with an empty password, the same form as
-// `git clone https://<token>@github.com/owner/repo.git`.
+// `git clone https://<token>@github.com/owner/repo.git`. With SSHKey set, it
+// returns an SSH clone URL and the key instead, with no token involved.
 func (c *Client) Remote(r backup.Repo) backup.Remote {
+	if c.SSHKey != nil {
+		return backup.Remote{
+			CloneURL: sshCloneHost.JoinPath(r.Path + ".git").String(),
+			SSHKey:   c.SSHKey,
+		}
+	}
 	return backup.Remote{
 		CloneURL:   cloneHost.JoinPath(r.Path + ".git").String(),
 		AuthHeader: "Basic " + basicAuth(c.Token, ""),

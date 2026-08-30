@@ -32,6 +32,17 @@ type Client struct {
 	// composition root builds a Client before it knows which run's logger
 	// it should use; nil defaults to slog.Default().
 	Logger *slog.Logger
+
+	// SSHKey, when set, makes Remote return an SSH clone URL and this key
+	// instead of an HTTPS one authenticated with Token -- the two are
+	// mutually exclusive by construction, enforced in backup.LoadConfig
+	// before a Client is even built.
+	SSHKey *backup.SSHKey
+
+	// SSHHost overrides the host[:port] Remote clones over SSH from. Empty
+	// defaults to BaseURL's own host on the standard port 22 -- see
+	// sshCloneURL.
+	SSHHost string
 }
 
 // New builds a Client against the given base URL.
@@ -60,12 +71,35 @@ func (c *Client) logger() *slog.Logger {
 // a host or port the caller can't actually reach -- inside a container it's
 // the container's internal port, and behind a reverse proxy it can be wrong
 // entirely. Forgejo's git-http-backend accepts the same "token <t>"
-// Authorization header as its REST API, so no username is needed.
+// Authorization header as its REST API, so no username is needed. With
+// SSHKey set, it returns an SSH clone URL and the key instead, with no
+// token involved.
 func (c *Client) Remote(r backup.Repo) backup.Remote {
+	if c.SSHKey != nil {
+		return backup.Remote{
+			CloneURL: c.sshCloneURL(r),
+			SSHKey:   c.SSHKey,
+		}
+	}
 	return backup.Remote{
 		CloneURL:   c.BaseURL.JoinPath(r.Path + ".git").String(),
 		AuthHeader: "token " + c.Token,
 	}
+}
+
+// sshCloneURL builds the ssh:// clone URL for r. Forgejo conventionally
+// serves git-over-ssh as the "git" user on the standard port 22 of the same
+// host as the web UI, even when the web UI itself runs on a different
+// HTTPS port, so that's the default -- SSHHost overrides it for an instance
+// that doesn't follow the convention, such as this package's own
+// container-backed integration tests.
+func (c *Client) sshCloneURL(r backup.Repo) string {
+	host := c.SSHHost
+	if host == "" {
+		host = c.BaseURL.Hostname()
+	}
+	u := &url.URL{Scheme: "ssh", User: url.User("git"), Host: host}
+	return u.JoinPath(r.Path + ".git").String()
 }
 
 type searchResponse struct {

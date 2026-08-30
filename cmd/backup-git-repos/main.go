@@ -44,20 +44,36 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
 		client.SkipMirrors = fc.SkipMirrors
+		client.SSHKey = sshKey(fc)
+		client.SSHHost = fc.SSHHost
 		return backup.Runner{Lister: client, Mirrorer: backup.Mirror{}, Remoter: client}, nil
 	case "gitlab":
 		client, err := gitlab.New(fc.URL, fc.Token)
 		if err != nil {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
+		client.SSHKey = sshKey(fc)
+		client.SSHHost = fc.SSHHost
 		return backup.Runner{Lister: client, Mirrorer: backup.Mirror{}, Remoter: client}, nil
 	case "github":
 		client, err := github.New(fc.URL, fc.Token)
 		if err != nil {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
+		client.SSHKey = sshKey(fc)
 		return backup.Runner{Lister: client, Mirrorer: backup.Mirror{}, Remoter: client}, nil
 	default:
 		return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, &backup.UnknownKindError{Kind: fc.Kind})
 	}
+}
+
+// sshKey builds the backup.SSHKey a Client's Remote should clone with, or
+// nil for a forge configured with a token instead -- LoadConfig already
+// guarantees a forge sets exactly one of the two, so checking SSHKeyPath is
+// enough to tell which.
+func sshKey(fc backup.ForgeConfig) *backup.SSHKey {
+	if fc.SSHKeyPath == "" {
+		return nil
+	}
+	return &backup.SSHKey{Path: fc.SSHKeyPath, Passphrase: fc.SSHKeyPassphrase}
 }

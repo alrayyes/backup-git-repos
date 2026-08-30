@@ -24,6 +24,13 @@ type fixture struct {
 	BaseURL       string
 	Token         string
 	AdminUsername string
+
+	// SSHHost is the container's own mapped SSH endpoint (host:port) --
+	// never the standard port 22, which testcontainers maps to something
+	// else at random, the same reason ConnectionString above can't be
+	// trusted for the HTTP port either. Client.SSHHost in mirror_ssh_test.go
+	// points at this instead of assuming the default.
+	SSHHost string
 }
 
 // start boots a Forgejo container, mints an API token for it, and seeds the
@@ -42,10 +49,14 @@ func start(t *testing.T) fixture {
 	baseURL, err := ctr.ConnectionString(ctx)
 	require.NoError(t, err)
 
+	sshHost, err := ctr.SSHConnectionString(ctx)
+	require.NoError(t, err)
+
 	f := fixture{
 		BaseURL:       baseURL,
 		Token:         mintToken(ctx, t, ctr),
 		AdminUsername: ctr.AdminUsername(),
+		SSHHost:       sshHost,
 	}
 	f.seed(t)
 
@@ -101,6 +112,15 @@ func (f fixture) seed(t *testing.T) {
 func (f fixture) post(t *testing.T, path string, body, out any) {
 	t.Helper()
 	f.do(t, http.MethodPost, path, body, out)
+}
+
+// addSSHKey adds an authorized-keys-format public key to the admin
+// account -- the same thing a real user does to clone with a deploy key --
+// so mirror_ssh_test.go can mirror against this instance with the matching
+// private key and no token at all.
+func (f fixture) addSSHKey(t *testing.T, title, publicKey string) {
+	t.Helper()
+	f.post(t, "/api/v1/user/keys", map[string]any{"title": title, "key": publicKey}, nil)
 }
 
 // patch sends an authenticated JSON PATCH and requires a 2xx response.
