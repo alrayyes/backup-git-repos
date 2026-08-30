@@ -237,6 +237,89 @@ func TestCLIRunRejectsUnknownArchive(t *testing.T) {
 	require.ErrorIs(t, err, backup.ErrBadArchive)
 }
 
+func TestCLIRunRejectsUnknownMetadataKind(t *testing.T) {
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--config", "config.yaml", "--dest", "/tmp/dest", "--export-metadata", "bogus"})
+
+	err := root.Execute()
+
+	require.ErrorIs(t, err, backup.ErrBadMetadataKind)
+}
+
+// recordingIssueExporter is a MetadataExporter for MetadataIssues that just
+// records which repository paths it was asked to export.
+type recordingIssueExporter struct {
+	mu       *sync.Mutex
+	exported *[]string
+}
+
+func newRecordingIssueExporter() recordingIssueExporter {
+	return recordingIssueExporter{mu: new(sync.Mutex), exported: new([]string)}
+}
+
+func (recordingIssueExporter) Kind() backup.MetadataKind { return backup.MetadataIssues }
+
+func (e recordingIssueExporter) Export(_ context.Context, repo backup.Repo, dir string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	*e.exported = append(*e.exported, repo.Path)
+	return os.MkdirAll(dir, 0o755)
+}
+
+// TestCLIRunLeavesMetadataUnexportedByDefault guards #81's own acceptance
+// criteria directly through the CLI: with no --export-metadata flag at all,
+// a Runner carrying a MetadataExporter still never invokes it -- metadata
+// export disabled leaves a run's behavior unchanged from before this flag
+// existed.
+func TestCLIRunLeavesMetadataUnexportedByDefault(t *testing.T) {
+	exp := newRecordingIssueExporter()
+	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
+		return backup.Runner{
+			Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+			MetadataExporters: []backup.MetadataExporter{exp},
+		}, nil
+	}
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token: unused\n")
+
+	root := backup.NewRootCommand("test", newRunner)
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", t.TempDir()})
+
+	require.NoError(t, root.Execute())
+
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+	require.Empty(t, *exp.exported)
+	require.NotContains(t, out.String(), "metadata exported")
+}
+
+// TestCLIRunExportsMetadataWhenFlagSet is the same run with
+// --export-metadata issues set, proving the flag actually reaches Options.
+func TestCLIRunExportsMetadataWhenFlagSet(t *testing.T) {
+	exp := newRecordingIssueExporter()
+	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
+		return backup.Runner{
+			Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
+			MetadataExporters: []backup.MetadataExporter{exp},
+		}, nil
+	}
+	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token: unused\n")
+
+	root := backup.NewRootCommand("test", newRunner)
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetArgs([]string{"run", "--config", cfgPath, "--dest", t.TempDir(), "--export-metadata", "issues"})
+
+	require.NoError(t, root.Execute())
+
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+	require.Contains(t, *exp.exported, backup.TestActiveRepoPath)
+	require.Contains(t, out.String(), "metadata exported")
+}
+
 // dirCapturingMirrorer records every dir it was asked to sync into, without
 // touching disk -- these tests care only about the path, not the mirror
 // contents. Run mirrors repositories concurrently, so appends are guarded by

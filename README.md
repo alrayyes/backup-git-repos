@@ -36,6 +36,9 @@ or write either out as a `.tar.gz` alongside the mirror.
   own git repositories, never returned by the projects API a project itself
   comes from, so a run mirrors them as their own entries alongside the
   project rather than silently missing them
+- Optionally exports a repository's issues and their comments alongside its
+  mirror (`--export-metadata issues`) -- metadata a bare git mirror never
+  captures on its own, since none of it lives in the git history
 
 ## Requirements
 
@@ -209,6 +212,7 @@ Resulting layout:
   archive/work/group/subgroup/repo.tar.gz # only when --archive is set
   archive/home/team/old-repo.tar.gz       # archived repo selected by --archive:
                                            # only the tar.gz, no .git alongside it
+  home/team/repo.metadata/issues/42.json  # only when --export-metadata issues is set
 ```
 
 ### Restoring a repository
@@ -238,6 +242,61 @@ installed too -- `git clone` checks out the working tree with plain pointer
 files otherwise, and `git lfs pull` afterward is what turns them into the
 real file contents, the same way it would against the original forge.
 
+### Metadata export
+
+A bare mirror captures every commit, branch and tag, but nothing else a
+forge stores about a repository -- issues, pull/merge requests, releases,
+CI/CD config -- because none of it lives in the git history. `--export-metadata`
+is opt-in per kind, comma-separated or repeated: `--export-metadata issues`.
+Off by default, and off is exactly today's behaviour -- nothing about a run
+changes unless you ask for a kind by name. `issues` is the only kind this
+release supports; more (pull/merge requests, releases, CI/CD config) are
+planned as separate, later additions to the same flag, opted into
+individually.
+
+Each kind lands in its own subdirectory alongside the repository's mirror,
+never inside it:
+
+```text
+/srv/backups/git/home/team/repo.git/           # the mirror, as always
+/srv/backups/git/home/team/repo.metadata/issues/1.json
+/srv/backups/git/home/team/repo.metadata/issues/2.json
+```
+
+One JSON file per issue, named by its number, holding its title, body,
+author, state (`open` or `closed`), labels, timestamps, and every comment on
+it -- an issue with no comments is still written, with an empty `"comments"`
+list, not skipped:
+
+```json
+{
+  "number": 2,
+  "title": "some things need saying",
+  "body": "...",
+  "author": "alice",
+  "state": "closed",
+  "labels": ["bug"],
+  "created_at": "2026-08-15T08:00:00Z",
+  "updated_at": "2026-08-15T10:00:00Z",
+  "closed_at": "2026-08-15T10:00:00Z",
+  "comments": [{ "author": "bob", "body": "confirmed", "created_at": "2026-08-15T09:00:00Z" }]
+}
+```
+
+What isn't exported: a private issue or comment your token can't itself
+read comes back the same way it would from any other API call --
+`backup-git-repos` exports only what the configured token can already see,
+never more. A forge administrator's own view (private discussions restricted
+to staff, say) isn't something a personal access token reaches either, so
+those stay out of the backup along with everything else the token was
+never granted.
+
+On GitLab, only genuine issues are written -- merge requests live on their
+own, entirely separate API endpoint, so there's nothing to filter out. On
+Forgejo and GitHub, issues and pull requests share one API endpoint; the
+exporter asks for issues only, so a pull request never shows up misfiled as
+one.
+
 ### Flags
 
 - `--config, -c`: path to the YAML config (default:
@@ -254,6 +313,12 @@ real file contents, the same way it would against the original forge.
 - `--archive`: `none` \| `all` \| `active` \| `archived` — which repositories
   also get written out as a `.tar.gz` (default `none`)
 - `--archive-dir`: where archives go (default `<dest>/archive`)
+- `--export-metadata`: comma-separated or repeated; also export these kinds
+  of forge metadata alongside each repository's mirror, under
+  `<dest>/<repo>.metadata/<kind>/` (see [Metadata
+  export](#metadata-export)). Currently, just `issues`. Off by default: a
+  run's behaviour is unchanged from before this flag existed unless you name
+  a kind
 - `--concurrency, -j`: repositories mirrored in parallel (default the number
   of CPUs)
 - `--timeout`: per-repository timeout (default `30m`)

@@ -4,6 +4,7 @@ package gitlab_test
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	backup "github.com/alrayyes/backup-git-repos"
@@ -47,6 +49,32 @@ func TestUpdateFixtures(t *testing.T) {
 	for role, path := range fixtureRoles {
 		writeFixture(t, "wikis_"+role+".json", fetchRawProjectSub(t, f, path, "wikis"))
 		writeFixture(t, "snippets_"+role+".json", fetchRawProjectSub(t, f, path, "snippets"))
+	}
+
+	updateIssueFixtures(t, f)
+}
+
+// updateIssueFixtures refreshes issues_active.json and one
+// notes_active_<iid>.json per issue seed.seedIssues creates on
+// team/active-repo -- the two backup.TestIssueExporter itself expects, an
+// open one and a closed one -- from the real iids GitLab assigned them
+// rather than the 1/2 this package's own hand-authored testdata assumed
+// before the first real -update run recorded actual values.
+func updateIssueFixtures(t *testing.T, f fixture) {
+	t.Helper()
+
+	issuesRaw := fetchRawProjectSub(t, f, backup.TestActiveRepoPath, "issues")
+	writeFixture(t, "issues_active.json", issuesRaw)
+
+	var issues []struct {
+		IID int `json:"iid"`
+	}
+	require.NoError(t, json.Unmarshal(issuesRaw, &issues))
+
+	for _, issue := range issues {
+		sub := "issues/" + strconv.Itoa(issue.IID) + "/notes"
+		notesRaw := fetchRawProjectSub(t, f, backup.TestActiveRepoPath, sub)
+		writeFixture(t, "notes_active_"+strconv.Itoa(issue.IID)+".json", notesRaw)
 	}
 }
 

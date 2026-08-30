@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/exec"
@@ -77,6 +78,11 @@ func mintToken(ctx context.Context, t *testing.T, ctr *tcforgejo.Container) stri
 // team/active-repo with an extra branch and tag, team/archived-repo (marked
 // archived after creation, since the create endpoint has no such field),
 // team/empty-repo, and a personal repository under the admin account.
+// team/active-repo also gets the two issues backup.TestIssueExporter
+// expects (see seedIssues below) and, to prove #81's issues-only filter, a
+// pull request -- Forgejo's issues endpoint returns pull requests
+// alongside real issues unless the exporter asks for type=issues, so a
+// pull request among the fixtures is what would catch a regression there.
 func (f fixture) seed(t *testing.T) {
 	t.Helper()
 
@@ -87,6 +93,8 @@ func (f fixture) seed(t *testing.T) {
 		map[string]any{"new_branch_name": "feature", "old_ref_name": "main"}, nil)
 	f.post(t, "/api/v1/repos/team/active-repo/tags",
 		map[string]any{"tag_name": "v1.0.0", "target": "main"}, nil)
+	f.seedIssues(t)
+	f.seedPullRequest(t)
 
 	f.post(t, "/api/v1/orgs/team/repos", map[string]any{"name": "archived-repo", "auto_init": true}, nil)
 	f.patch(t, "/api/v1/repos/team/archived-repo", map[string]any{"archived": true})
@@ -94,6 +102,35 @@ func (f fixture) seed(t *testing.T) {
 	f.post(t, "/api/v1/orgs/team/repos", map[string]any{"name": "empty-repo"}, nil)
 
 	f.post(t, "/api/v1/user/repos", map[string]any{"name": "personal", "auto_init": true}, nil)
+}
+
+// seedIssues creates the two issues backup.TestIssueExporter expects on
+// team/active-repo: an open one carrying one comment
+// (backup.TestIssueCommentBody), and a closed one carrying none -- proving
+// both a populated comment list and #81's "an issue with no comments is
+// still written" requirement from the one fixture set.
+func (f fixture) seedIssues(t *testing.T) {
+	t.Helper()
+
+	f.post(t, "/api/v1/repos/team/active-repo/issues",
+		map[string]any{"title": backup.TestIssueOpenTitle, "body": "please fix this"}, nil)
+	f.post(t, "/api/v1/repos/team/active-repo/issues/1/comments",
+		map[string]any{"body": backup.TestIssueCommentBody}, nil)
+
+	f.post(t, "/api/v1/repos/team/active-repo/issues",
+		map[string]any{"title": backup.TestIssueClosedTitle, "body": "already handled"}, nil)
+	f.patch(t, "/api/v1/repos/team/active-repo/issues/2", map[string]any{"state": "closed"})
+}
+
+// seedPullRequest creates a branch and opens a pull request from it against
+// team/active-repo's default branch -- see seed's own doc comment for why.
+func (f fixture) seedPullRequest(t *testing.T) {
+	t.Helper()
+
+	f.post(t, "/api/v1/repos/team/active-repo/branches",
+		map[string]any{"new_branch_name": "pr-branch", "old_ref_name": "main"}, nil)
+	f.post(t, "/api/v1/repos/team/active-repo/pulls",
+		map[string]any{"title": "a pull request", "head": "pr-branch", "base": "main"}, nil)
 }
 
 // post sends an authenticated JSON POST and requires a 2xx response,

@@ -51,17 +51,18 @@ func ParseArchive(s string) (ArchiveSelection, error) {
 }
 
 type cliFlags struct {
-	config       string
-	dest         string
-	forges       []string
-	state        string
-	archive      string
-	archiveDir   string
-	concurrency  int
-	timeout      time.Duration
-	verbose      bool
-	dryRun       bool
-	pruneRemoved bool
+	config         string
+	dest           string
+	forges         []string
+	state          string
+	archive        string
+	archiveDir     string
+	concurrency    int
+	timeout        time.Duration
+	verbose        bool
+	dryRun         bool
+	pruneRemoved   bool
+	exportMetadata []string
 }
 
 // NewRunner builds the Runner for a configured forge. Implementations live
@@ -100,6 +101,8 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 	runCmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "print what a run would do, without cloning or writing anything")
 	runCmd.Flags().BoolVar(&flags.pruneRemoved, "prune-removed", false,
 		"delete a mirror (and its tar.gz, if archived) once its repository no longer appears in the forge's listing")
+	runCmd.Flags().StringSliceVar(&flags.exportMetadata, "export-metadata", nil,
+		"also export forge metadata for these kinds, comma-separated or repeated (currently just: issues)")
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -143,6 +146,10 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	if err != nil {
 		return err
 	}
+	metadataKinds, err := ParseMetadataKinds(flags.exportMetadata)
+	if err != nil {
+		return err
+	}
 
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
@@ -161,7 +168,7 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 			continue
 		}
 
-		if err := runForge(cmd, fc, dest, archiveDir, state, archive, flags, newRunner, listOnly, log); err != nil {
+		if err := runForge(cmd, fc, dest, archiveDir, state, archive, metadataKinds, flags, newRunner, listOnly, log); err != nil {
 			return err
 		}
 	}
@@ -257,7 +264,7 @@ func setLogger(v any, log *slog.Logger) {
 
 func runForge(
 	cmd *cobra.Command, fc ForgeConfig, dest, archiveDir string, state State, archive ArchiveSelection,
-	flags cliFlags, newRunner NewRunner, listOnly bool, log *slog.Logger,
+	metadataKinds []MetadataKind, flags cliFlags, newRunner NewRunner, listOnly bool, log *slog.Logger,
 ) error {
 	runner, err := newRunner(fc)
 	if err != nil {
@@ -286,21 +293,26 @@ func runForge(
 
 	stderr := cmd.ErrOrStderr()
 	result, err := runner.Run(cmd.Context(), Options{
-		Dest:         filepath.Join(dest, fc.Name),
-		State:        state,
-		Archive:      archive,
-		ArchiveDir:   filepath.Join(archiveDir, fc.Name),
-		Concurrency:  flags.concurrency,
-		Timeout:      flags.timeout,
-		Log:          log,
-		PruneRemoved: flags.pruneRemoved,
-		Progress:     newProgressReporter(stderr, fc.Name, isTerminalWriter(stderr)),
+		Dest:           filepath.Join(dest, fc.Name),
+		State:          state,
+		Archive:        archive,
+		ArchiveDir:     filepath.Join(archiveDir, fc.Name),
+		ExportMetadata: metadataKinds,
+		Concurrency:    flags.concurrency,
+		Timeout:        flags.timeout,
+		Log:            log,
+		PruneRemoved:   flags.pruneRemoved,
+		Progress:       newProgressReporter(stderr, fc.Name, isTerminalWriter(stderr)),
 	})
 	if err != nil {
 		return fmt.Errorf("run %s: %w", fc.Name, err)
 	}
-	cmd.Printf("%s: synced %d, skipped %d, failed %d, archived %d, pruned %d\n",
+	summary := fmt.Sprintf("%s: synced %d, skipped %d, failed %d, archived %d, pruned %d",
 		fc.Name, result.Synced, result.Skipped, result.Failed, result.Archived, result.Pruned)
+	if len(metadataKinds) > 0 {
+		summary += fmt.Sprintf(", metadata exported %d", result.MetadataExported)
+	}
+	cmd.Println(summary)
 	return nil
 }
 
