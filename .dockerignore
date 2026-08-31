@@ -1,0 +1,16 @@
+.git/
+.github/
+.claude/
+node_modules/
+styles/Google/
+styles/proselint/
+**/testdata/
+*_test.go
+
+# Local runs -- never let a real config with a live token into a build layer.
+config.yaml
+backups/
+
+# Go/Node build output
+/backup-git-repos
+/dist/

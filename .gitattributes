@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.{cmd,bat,ps1} text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+
+go.sum -diff linguist-generated
+bun.lock -diff
