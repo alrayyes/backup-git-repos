@@ -1,7 +1,6 @@
 package github_test
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,6 +16,7 @@ import (
 // for a classic personal access token's granted scopes.
 func scopeServer(t *testing.T, scopes string) *httptest.Server {
 	t.Helper()
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if scopes != "" {
 			w.Header().Set("X-OAuth-Scopes", scopes)
@@ -24,6 +24,7 @@ func scopeServer(t *testing.T, scopes string) *httptest.Server {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Query().Get("page") != "" && r.URL.Query().Get("page") != "1" {
 			_, _ = w.Write([]byte("[]"))
+
 			return
 		}
 		_, _ = w.Write([]byte(`[{"full_name":"team/public-repo","archived":false,"size":1}]`))
@@ -65,5 +66,5 @@ func TestListReposSkipsScopeCheckWhenHeaderAbsent(t *testing.T) {
 	repos, err := client.ListRepos(t.Context(), backup.StateAll)
 	require.NoError(t, err)
 	require.Len(t, repos, 1)
-	require.False(t, errors.Is(err, github.ErrMissingRepoScope))
+	require.NotErrorIs(t, err, github.ErrMissingRepoScope)
 }

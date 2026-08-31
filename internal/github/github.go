@@ -22,6 +22,10 @@ import (
 // this is a backup that silently never carried anything private.
 var ErrMissingRepoScope = errors.New(`github token is missing the "repo" scope: private repositories would not be listed`)
 
+// ErrUnexpectedStatus means the GitHub API returned a status code the
+// client didn't expect for the request it made.
+var ErrUnexpectedStatus = errors.New("unexpected status")
+
 const (
 	// defaultBaseURL is GitHub.com's own REST API host. A test points
 	// Client.BaseURL at a recorded fixture server instead.
@@ -58,6 +62,7 @@ func New(base, token string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse github url: %w", err)
 	}
+
 	return &Client{BaseURL: u, Token: token}, nil
 }
 
@@ -101,12 +106,7 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 			break
 		}
 
-		for _, r := range items {
-			if !wantsState(state, r.Archived) {
-				continue
-			}
-			repos = append(repos, backup.Repo{Path: r.FullName, Archived: r.Archived, Empty: r.Size == 0})
-		}
+		repos = append(repos, filterRepos(items, state)...)
 
 		if len(items) < pageSize {
 			break
@@ -114,6 +114,20 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 	}
 
 	return repos, nil
+}
+
+// filterRepos converts a page of raw repo entries into backup.Repo,
+// dropping anything state doesn't want.
+func filterRepos(items []repo, state backup.State) []backup.Repo {
+	var repos []backup.Repo
+	for _, r := range items {
+		if !wantsState(state, r.Archived) {
+			continue
+		}
+		repos = append(repos, backup.Repo{Path: r.FullName, Archived: r.Archived, Empty: r.Size == 0})
+	}
+
+	return repos
 }
 
 func wantsState(state backup.State, archived bool) bool {
@@ -148,13 +162,14 @@ func (c *Client) fetchReposPage(ctx context.Context, page int) ([]repo, string, 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("list github repos: unexpected status %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("list github repos: %w: %d", ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	var items []repo
 	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
 		return nil, "", fmt.Errorf("list github repos: decode response: %w", err)
 	}
+
 	return items, resp.Header.Get("X-OAuth-Scopes"), nil
 }
 
@@ -167,11 +182,12 @@ func checkRepoScope(raw string) error {
 	if raw == "" {
 		return nil
 	}
-	for _, s := range strings.Split(raw, ",") {
+	for s := range strings.SplitSeq(raw, ",") {
 		if strings.TrimSpace(s) == "repo" {
 			return nil
 		}
 	}
+
 	return ErrMissingRepoScope
 }
 
@@ -182,6 +198,7 @@ func (c *Client) reposURL(page int) *url.URL {
 	q.Set("per_page", strconv.Itoa(pageSize))
 	q.Set("page", strconv.Itoa(page))
 	u.RawQuery = q.Encode()
+
 	return u
 }
 
@@ -189,5 +206,6 @@ func (c *Client) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
+
 	return http.DefaultClient
 }
