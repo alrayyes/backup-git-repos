@@ -1,0 +1,32 @@
+# release-please opens (and force-pushes updates to) the release pull
+# request as github-actions[bot], via release.yml's default GITHUB_TOKEN.
+# The commits on it are exactly what already landed on main through their
+# own reviewed pull requests -- this PR itself is only a version bump and
+# a changelog entry, nothing left for a human to read here. Same mechanism
+# as dependabot-auto-merge.yml: gate on the actor and branch, wait for the
+# same required checks every other pull request waits for, then arm
+# auto-merge the way a human would from the UI.
+#
+# pull_request, not pull_request_target: this PR's branch lives on the
+# repo itself, never a fork, so there's no untrusted checkout to guard
+# against, and pull_request_target would trade away the elevated
+# GITHUB_TOKEN permissions GitHub grants a bot-actor'd pull_request event
+# for nothing.
+name: release-auto-merge
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'github-actions[bot]' && startsWith(github.head_ref, 'release-please--')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enable auto-merge for the release pull request
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
