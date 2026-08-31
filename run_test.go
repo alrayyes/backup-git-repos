@@ -22,9 +22,14 @@ type fakeMirrorer struct{}
 
 func (fakeMirrorer) Sync(_ context.Context, _ backup.Remote, dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("create %s: %w", dir, err)
 	}
-	return os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+
+	if err := os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		return fmt.Errorf("write HEAD in %s: %w", dir, err)
+	}
+
+	return nil
 }
 
 type fakeRemoter struct{}
@@ -45,9 +50,14 @@ func (parentCheckingMirrorer) Sync(_ context.Context, _ backup.Remote, dir strin
 		return fmt.Errorf("parent of %s does not exist yet: %w", dir, err)
 	}
 	if err := os.Mkdir(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("create %s: %w", dir, err)
 	}
-	return os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+
+	if err := os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		return fmt.Errorf("write HEAD in %s: %w", dir, err)
+	}
+
+	return nil
 }
 
 func TestRun(t *testing.T) {
@@ -57,6 +67,7 @@ func TestRun(t *testing.T) {
 			Mirrorer: fakeMirrorer{},
 			Remoter:  fakeRemoter{},
 		}
+
 		return runner.Run(ctx, opts)
 	})
 }
@@ -68,7 +79,8 @@ type blockingMirrorer struct{}
 
 func (blockingMirrorer) Sync(ctx context.Context, _ backup.Remote, _ string) error {
 	<-ctx.Done()
-	return ctx.Err()
+
+	return fmt.Errorf("sync canceled: %w", ctx.Err())
 }
 
 // nRepoLister lists n distinct, non-empty, active repositories -- enough to
@@ -81,6 +93,7 @@ func (l nRepoLister) ListRepos(_ context.Context, _ backup.State) ([]backup.Repo
 	for i := range repos {
 		repos[i] = backup.Repo{Path: fmt.Sprintf("repo-%d", i)}
 	}
+
 	return repos, nil
 }
 
@@ -99,7 +112,7 @@ func (m barrierMirrorer) Sync(ctx context.Context, _ backup.Remote, _ string) er
 	case <-m.release:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("wait for release: %w", ctx.Err())
 	}
 }
 
@@ -133,7 +146,7 @@ func TestRunDefaultsConcurrencyToNumCPU(t *testing.T) {
 	// Concurrency defaulting to less than n (the old bug: hardcoded 1) means
 	// fewer than n Sync calls ever reach the barrier at once, so this blocks
 	// until the context deadline instead of every repo checking in.
-	for i := 0; i < n; i++ {
+	for i := range n {
 		select {
 		case <-arrived:
 		case <-ctx.Done():
@@ -299,12 +312,18 @@ func (e *recordingExporter) Export(_ context.Context, repo backup.Repo, dir stri
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.exported = append(e.exported, repo.Path)
-	return os.MkdirAll(dir, 0o750)
+
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+
+	return nil
 }
 
 func (e *recordingExporter) exportedPaths() []string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
 	return append([]string(nil), e.exported...)
 }
 

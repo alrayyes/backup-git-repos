@@ -2,7 +2,6 @@ package backup_test
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 
 	backup "github.com/alrayyes/backup-git-repos"
@@ -60,5 +59,5 @@ func TestCLIRunWritesNoProgressBarWhenNotATerminal(t *testing.T) {
 
 	require.NoError(t, root.Execute())
 
-	require.False(t, strings.Contains(stderr.String(), "\r"), "no carriage-return-redrawn progress bar expected when stderr isn't a terminal")
+	require.NotContains(t, stderr.String(), "\r", "no carriage-return-redrawn progress bar expected when stderr isn't a terminal")
 }

@@ -3,6 +3,7 @@ package backup_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -24,8 +25,11 @@ const configWithNoDest = "forges: []\n"
 // config validation, which happens first -- so a real adapter factory would
 // never be invoked either.
 func neverNewRunner(t *testing.T) backup.NewRunner {
+	t.Helper()
+
 	return func(backup.ForgeConfig) (backup.Runner, error) {
 		t.Fatal("newRunner should not have been called")
+
 		return backup.Runner{}, nil
 	}
 }
@@ -91,10 +95,13 @@ type neverSyncMirrorer struct{ t *testing.T }
 
 func (m neverSyncMirrorer) Sync(context.Context, backup.Remote, string) error {
 	m.t.Fatal("Sync should not have been called during a dry run")
+
 	return nil
 }
 
 func newDryRunRunner(t *testing.T) backup.NewRunner {
+	t.Helper()
+
 	return func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{
 			Lister:   newFakeLister(),
@@ -264,7 +271,12 @@ func (e recordingIssueExporter) Export(_ context.Context, repo backup.Repo, dir 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	*e.exported = append(*e.exported, repo.Path)
-	return os.MkdirAll(dir, 0o755)
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+
+	return nil
 }
 
 // TestCLIRunLeavesMetadataUnexportedByDefault guards #81's own acceptance
@@ -337,6 +349,7 @@ func (m dirCapturingMirrorer) Sync(_ context.Context, _ backup.Remote, dir strin
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	*m.dirs = append(*m.dirs, dir)
+
 	return nil
 }
 
