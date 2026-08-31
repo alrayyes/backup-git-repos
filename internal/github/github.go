@@ -14,6 +14,7 @@ import (
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/alrayyes/backup-git-repos/internal/httpauth"
+	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
 
 // ErrMissingRepoScope means a classic personal access token's granted
@@ -21,10 +22,6 @@ import (
 // still returns 200 with just the public repositories -- so left unchecked
 // this is a backup that silently never carried anything private.
 var ErrMissingRepoScope = errors.New(`github token is missing the "repo" scope: private repositories would not be listed`)
-
-// ErrUnexpectedStatus means the GitHub API returned a status code the
-// client didn't expect for the request it made.
-var ErrUnexpectedStatus = errors.New("unexpected status")
 
 const (
 	// defaultBaseURL is GitHub.com's own REST API host. A test points
@@ -162,7 +159,7 @@ func (c *Client) fetchReposPage(ctx context.Context, page int) ([]repo, string, 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("list github repos: %w: %d", ErrUnexpectedStatus, resp.StatusCode)
+		return nil, "", fmt.Errorf("list github repos: %w: %d", httperr.ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	var items []repo

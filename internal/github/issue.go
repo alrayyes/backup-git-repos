@@ -10,6 +10,7 @@ import (
 	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
 
 // IssueExporter exports a repository's issues and their comments from
@@ -164,7 +165,7 @@ func (e *IssueExporter) get(ctx context.Context, u *url.URL, out any) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("get %s: %w: %d", u, ErrUnexpectedStatus, resp.StatusCode)
+		return fmt.Errorf("get %s: %w: %d", u, httperr.ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {

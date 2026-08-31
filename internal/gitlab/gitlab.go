@@ -5,7 +5,6 @@ package gitlab
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,14 +14,11 @@ import (
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/alrayyes/backup-git-repos/internal/httpauth"
+	"github.com/alrayyes/backup-git-repos/internal/httperr"
 	"golang.org/x/sync/errgroup"
 )
 
 const pageSize = 100
-
-// ErrUnexpectedStatus means the GitLab API returned a status code the
-// client didn't expect for the request it made.
-var ErrUnexpectedStatus = errors.New("unexpected status")
 
 // projectDetailConcurrency bounds how many projects' wiki and snippet
 // lookups run in flight at once within one page of listByArchived. A
@@ -220,7 +216,7 @@ func (c *Client) fetchProjectsPage(ctx context.Context, page int, archived bool)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("list gitlab projects: %w: %d", ErrUnexpectedStatus, resp.StatusCode)
+		return nil, "", fmt.Errorf("list gitlab projects: %w: %d", httperr.ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	var projects []project
@@ -286,7 +282,7 @@ func (c *Client) getOptional(ctx context.Context, u *url.URL, resource, projectP
 		return "", nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("get %s: %w: %d", u, ErrUnexpectedStatus, resp.StatusCode)
+		return "", fmt.Errorf("get %s: %w: %d", u, httperr.ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {

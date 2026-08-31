@@ -5,7 +5,6 @@ package forgejo
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,13 +13,10 @@ import (
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/alrayyes/backup-git-repos/internal/httpauth"
+	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
 
 const pageSize = 50
-
-// ErrUnexpectedStatus means the Forgejo API returned a status code the
-// client didn't expect for the request it made.
-var ErrUnexpectedStatus = errors.New("unexpected status")
 
 // Client lists and mirrors repositories from a self-hosted Forgejo instance.
 type Client struct {
@@ -141,7 +137,7 @@ func (c *Client) fetchSearchPage(ctx context.Context, page int, state backup.Sta
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return searchResponse{}, fmt.Errorf("list forgejo repos: %w: %d", ErrUnexpectedStatus, resp.StatusCode)
+		return searchResponse{}, fmt.Errorf("list forgejo repos: %w: %d", httperr.ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	var body searchResponse
