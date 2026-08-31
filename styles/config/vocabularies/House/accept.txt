@@ -52,6 +52,7 @@ filesystem
 subprocess(es)?
 runtime
 CPUs?
+stdin
 stdout
 stderr
 hadolint
