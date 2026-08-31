@@ -26,6 +26,11 @@ var ErrConfigRequired = errors.New("--config is required: no config file at the 
 // backup destination.
 var ErrDestRequired = errors.New("--dest is required, or set dest in the config file")
 
+// ErrConfigInitWritten means `run` or `list` just wrote a starter config
+// via the interactive config-init prompt, so the caller needs to edit it
+// and run again rather than treating this run as configured.
+var ErrConfigInitWritten = errors.New("wrote a starter config")
+
 // ParseState parses a --state flag value.
 func ParseState(s string) (State, error) {
 	switch s {
@@ -246,7 +251,7 @@ func resolveConfigPath(cmd *cobra.Command, flags cliFlags, interactive func() bo
 			return "", err
 		}
 		if wrote {
-			return "", fmt.Errorf("wrote a starter config to %s -- edit it and run again", path)
+			return "", fmt.Errorf("%w to %s -- edit it and run again", ErrConfigInitWritten, path)
 		}
 	}
 

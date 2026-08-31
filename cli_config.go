@@ -106,6 +106,7 @@ func promptConfigInit(cmd *cobra.Command, flags cliFlags, path string) (bool, er
 	if err := runConfigInit(cmd, flags, false); err != nil {
 		return false, err
 	}
+
 	return true, nil
 }
 
