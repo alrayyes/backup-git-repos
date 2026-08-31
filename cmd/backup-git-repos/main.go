@@ -28,8 +28,10 @@ func run() int {
 
 	if err := backup.NewRootCommand(version, newRunner).ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+
 		return 1
 	}
+
 	return 0
 }
 
@@ -44,6 +46,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
 		client.SkipMirrors = fc.SkipMirrors
+
 		return backup.Runner{
 			Lister: client, Mirrorer: backup.Mirror{}, Remoter: client,
 			MetadataExporters: []backup.MetadataExporter{forgejo.NewIssueExporter(client)},
@@ -53,6 +56,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 		if err != nil {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
+
 		return backup.Runner{
 			Lister: client, Mirrorer: backup.Mirror{}, Remoter: client,
 			MetadataExporters: []backup.MetadataExporter{gitlab.NewIssueExporter(client)},
@@ -62,6 +66,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 		if err != nil {
 			return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, err)
 		}
+
 		return backup.Runner{
 			Lister: client, Mirrorer: backup.Mirror{}, Remoter: client,
 			MetadataExporters: []backup.MetadataExporter{github.NewIssueExporter(client)},

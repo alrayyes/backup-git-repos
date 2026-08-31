@@ -82,6 +82,7 @@ func repoPaths(repos []Repo) []string {
 	for i, r := range repos {
 		paths[i] = r.Path
 	}
+
 	return paths
 }
 
@@ -93,6 +94,7 @@ func findRepo(t *testing.T, repos []Repo, path string) Repo {
 		}
 	}
 	t.Fatalf("no repo with path %q in %v", path, repoPaths(repos))
+
 	return Repo{}
 }
 
@@ -146,6 +148,7 @@ func TestSeedStaleMirror(t *testing.T, dest string) string {
 	dir := filepath.Join(dest, TestRemovedRepoPath+".git")
 	require.NoError(t, os.MkdirAll(dir, 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o600))
+
 	return dir
 }
 
@@ -157,6 +160,7 @@ func TestSeedStaleArchive(t *testing.T, archiveDir string) string {
 	file := filepath.Join(archiveDir, TestRemovedRepoPath+".tar.gz")
 	require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o750))
 	require.NoError(t, os.WriteFile(file, []byte("not a real tarball"), 0o600))
+
 	return file
 }
 
@@ -377,6 +381,7 @@ func readIssues(t *testing.T, dir string) []Issue {
 		require.NoError(t, json.Unmarshal(data, &issue))
 		issues = append(issues, issue)
 	}
+
 	return issues
 }
 
@@ -388,5 +393,6 @@ func findIssueByTitle(t *testing.T, issues []Issue, title string) Issue {
 		}
 	}
 	t.Fatalf("no issue titled %q among %d issues", title, len(issues))
+
 	return Issue{}
 }

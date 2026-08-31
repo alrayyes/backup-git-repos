@@ -46,6 +46,7 @@ func (m Mirror) syncLFS(ctx context.Context, git string, r Remote, dir string) e
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("mirror lfs %s: %w: %s", r.CloneURL, err, out)
 	}
+
 	return nil
 }
 
@@ -57,6 +58,7 @@ func (m Mirror) gitLFSPath() (string, error) {
 	if err != nil {
 		return "", ErrGitLFSNotFound
 	}
+
 	return p, nil
 }
 
@@ -96,6 +98,7 @@ func usesLFS(ctx context.Context, git, dir string) (bool, error) {
 // status (1), as opposed to a real failure such as a corrupt repository.
 func isGrepNoMatch(err error) bool {
 	var exitErr *exec.ExitError
+
 	return errors.As(err, &exitErr) && exitErr.ExitCode() == 1
 }
 
@@ -113,5 +116,6 @@ func refTips(ctx context.Context, git, dir string) ([]string, error) {
 	if trimmed == "" {
 		return nil, nil
 	}
+
 	return strings.Split(trimmed, "\n"), nil
 }

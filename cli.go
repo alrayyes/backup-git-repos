@@ -18,6 +18,19 @@ import (
 // ErrBadState means --state wasn't one of all, active, or archived.
 var ErrBadState = errors.New("state must be one of: all, active, archived")
 
+// ErrConfigRequired means --config wasn't passed and no config file exists
+// at the default path.
+var ErrConfigRequired = errors.New("--config is required: no config file at the default path")
+
+// ErrDestRequired means neither --dest nor the config file's dest set a
+// backup destination.
+var ErrDestRequired = errors.New("--dest is required, or set dest in the config file")
+
+// ErrConfigInitWritten means `run` or `list` just wrote a starter config
+// via the interactive config-init prompt, so the caller needs to edit it
+// and run again rather than treating this run as configured.
+var ErrConfigInitWritten = errors.New("wrote a starter config")
+
 // ParseState parses a --state flag value.
 func ParseState(s string) (State, error) {
 	switch s {
@@ -149,11 +162,13 @@ func NewRootCommand(version string, newRunner NewRunner, opts ...Option) *cobra.
 		Short: "Print the version",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cmd.Println(version)
+
 			return nil
 		},
 	}
 
 	root.AddCommand(runCmd, listCmd, versionCmd, newConfigCommand(&flags))
+
 	return root
 }
 
@@ -236,11 +251,11 @@ func resolveConfigPath(cmd *cobra.Command, flags cliFlags, interactive func() bo
 			return "", err
 		}
 		if wrote {
-			return "", fmt.Errorf("wrote a starter config to %s -- edit it and run again", path)
+			return "", fmt.Errorf("%w to %s -- edit it and run again", ErrConfigInitWritten, path)
 		}
 	}
 
-	return "", fmt.Errorf("--config is required: no config file at the default path %s", path)
+	return "", fmt.Errorf("%w: %s", ErrConfigRequired, path)
 }
 
 // resolveDestPaths applies the --dest/config-file fallback and --archive-dir's
@@ -251,7 +266,7 @@ func resolveDestPaths(flags cliFlags, cfg Config, listOnly bool) (dest, archiveD
 		dest = cfg.Dest
 	}
 	if dest == "" && !listOnly {
-		return "", "", errors.New("--dest is required, or set dest in the config file")
+		return "", "", ErrDestRequired
 	}
 	dest, err = expandHome(dest)
 	if err != nil {
@@ -261,12 +276,14 @@ func resolveDestPaths(flags cliFlags, cfg Config, listOnly bool) (dest, archiveD
 	archiveDir = flags.archiveDir
 	if archiveDir == "" {
 		archiveDir = filepath.Join(dest, "archive")
+
 		return dest, archiveDir, nil
 	}
 	archiveDir, err = expandHome(archiveDir)
 	if err != nil {
 		return "", "", err
 	}
+
 	return dest, archiveDir, nil
 }
 
@@ -278,6 +295,7 @@ func newCLILogger(w io.Writer, verbose bool) *slog.Logger {
 	if verbose {
 		level = slog.LevelDebug
 	}
+
 	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: level}))
 }
 
@@ -298,6 +316,7 @@ func expandHome(path string) (string, error) {
 	if path == "~" {
 		return home, nil
 	}
+
 	return filepath.Join(home, path[2:]), nil
 }
 
@@ -330,6 +349,7 @@ func runForge(
 		for _, r := range repos {
 			cmd.Println(fc.Name + "/" + r.Path)
 		}
+
 		return nil
 	}
 
@@ -361,6 +381,7 @@ func runForge(
 		summary += fmt.Sprintf(", metadata exported %d", result.MetadataExported)
 	}
 	cmd.Println(summary)
+
 	return nil
 }
 
@@ -394,6 +415,7 @@ func dryRunForge(cmd *cobra.Command, fc ForgeConfig, cfg dryRunConfig, runner Ru
 		if r.Empty {
 			cmd.Printf("%s/%s: skip (empty)\n", fc.Name, r.Path)
 			skipped++
+
 			continue
 		}
 
@@ -416,6 +438,7 @@ func dryRunForge(cmd *cobra.Command, fc ForgeConfig, cfg dryRunConfig, runner Ru
 		summary += fmt.Sprintf(", prune %d", pruned)
 	}
 	cmd.Println(summary + " (dry run)")
+
 	return nil
 }
 
@@ -442,6 +465,7 @@ func dryRunPrune(cmd *cobra.Command, fc ForgeConfig, cfg dryRunConfig, runner Ru
 	for _, path := range stale {
 		cmd.Printf("%s/%s: prune\n", fc.Name, path)
 	}
+
 	return len(stale), nil
 }
 
@@ -458,5 +482,6 @@ func dryRunAction(dest, forge string, r Repo, wantArchive bool) string {
 	if _, err := os.Stat(filepath.Join(dir, "HEAD")); err == nil {
 		return "update"
 	}
+
 	return "clone"
 }

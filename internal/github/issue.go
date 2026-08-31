@@ -10,6 +10,7 @@ import (
 	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
 
 // IssueExporter exports a repository's issues and their comments from
@@ -77,15 +78,7 @@ func (e *IssueExporter) Export(ctx context.Context, repo backup.Repo, dir string
 		}
 
 		for _, it := range items {
-			if it.PullRequest != nil {
-				continue
-			}
-
-			comments, err := e.fetchComments(ctx, repo.Path, it.Number)
-			if err != nil {
-				return err
-			}
-			if err := backup.WriteIssue(dir, toIssue(it, comments)); err != nil {
+			if err := e.exportIssue(ctx, repo, dir, it); err != nil {
 				return err
 			}
 		}
@@ -94,6 +87,25 @@ func (e *IssueExporter) Export(ctx context.Context, repo backup.Repo, dir string
 			return nil
 		}
 	}
+}
+
+// exportIssue fetches its comments and writes it out to dir, skipping
+// pull requests entirely -- see ghIssue's own doc comment.
+func (e *IssueExporter) exportIssue(ctx context.Context, repo backup.Repo, dir string, it ghIssue) error {
+	if it.PullRequest != nil {
+		return nil
+	}
+
+	comments, err := e.fetchComments(ctx, repo.Path, it.Number)
+	if err != nil {
+		return err
+	}
+
+	if err := backup.WriteIssue(dir, toIssue(it, comments)); err != nil {
+		return fmt.Errorf("write issue %s#%d: %w", repo.Path, it.Number, err)
+	}
+
+	return nil
 }
 
 func (e *IssueExporter) fetchIssuesPage(ctx context.Context, repoPath string, page int) ([]ghIssue, error) {
@@ -108,6 +120,7 @@ func (e *IssueExporter) fetchIssuesPage(ctx context.Context, repoPath string, pa
 	if err := e.get(ctx, u, &items); err != nil {
 		return nil, fmt.Errorf("list github issues for %s: %w", repoPath, err)
 	}
+
 	return items, nil
 }
 
@@ -139,7 +152,7 @@ func (e *IssueExporter) fetchComments(ctx context.Context, repoPath string, numb
 func (e *IssueExporter) get(ctx context.Context, u *url.URL, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build request for %s: %w", u, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+e.Client.Token)
 	req.Header.Set("Accept", "application/vnd.github+json")
@@ -147,15 +160,19 @@ func (e *IssueExporter) get(ctx context.Context, u *url.URL, out any) error {
 
 	resp, err := e.Client.httpClient().Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("get %s: %w", u, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status %d", resp.StatusCode)
+		return fmt.Errorf("get %s: %w: %d", u, httperr.ErrUnexpectedStatus, resp.StatusCode)
 	}
 
-	return json.NewDecoder(resp.Body).Decode(out)
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decode response from %s: %w", u, err)
+	}
+
+	return nil
 }
 
 func toIssue(it ghIssue, comments []ghComment) backup.Issue {
@@ -179,5 +196,6 @@ func toIssue(it ghIssue, comments []ghComment) backup.Issue {
 	for i, c := range comments {
 		out.Comments[i] = backup.Comment{Author: c.User.Login, Body: c.Body, CreatedAt: c.CreatedAt}
 	}
+
 	return out
 }

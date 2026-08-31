@@ -77,7 +77,7 @@ func (e *IssueExporter) Export(ctx context.Context, repo backup.Repo, dir string
 				return err
 			}
 			if err := backup.WriteIssue(dir, toIssue(it, notes)); err != nil {
-				return err
+				return fmt.Errorf("write issue %s#%d: %w", repo.Path, it.IID, err)
 			}
 		}
 
@@ -95,6 +95,7 @@ func (e *IssueExporter) fetchIssuesPage(ctx context.Context, projectPath string,
 	if err != nil {
 		return nil, "", fmt.Errorf("list gitlab issues for %s: %w", projectPath, err)
 	}
+
 	return items, next, nil
 }
 
@@ -133,6 +134,7 @@ func (e *IssueExporter) notesURL(projectPath string, iid, page int) *url.URL {
 	q.Set("per_page", strconv.Itoa(pageSize))
 	q.Set("page", strconv.Itoa(page))
 	u.RawQuery = q.Encode()
+
 	return u
 }
 
@@ -157,5 +159,6 @@ func toIssue(it glIssue, notes []glNote) backup.Issue {
 	for i, n := range notes {
 		out.Comments[i] = backup.Comment{Author: n.Author.Username, Body: n.Body, CreatedAt: n.CreatedAt}
 	}
+
 	return out
 }

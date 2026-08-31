@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -29,14 +30,18 @@ func (fakeIssueExporter) Export(_ context.Context, repo backup.Repo, dir string)
 		State: "open", Labels: []string{"bug"}, CreatedAt: now, UpdatedAt: now,
 		Comments: []backup.Comment{{Author: "bob", Body: backup.TestIssueCommentBody, CreatedAt: now}},
 	}); err != nil {
-		return err
+		return fmt.Errorf("write issue 1: %w", err)
 	}
 
 	closedAt := now.Add(time.Hour)
-	return backup.WriteIssue(dir, backup.Issue{
+	if err := backup.WriteIssue(dir, backup.Issue{
 		Number: 2, Title: backup.TestIssueClosedTitle, Body: "already handled", Author: "alice",
 		State: "closed", CreatedAt: now, UpdatedAt: closedAt, ClosedAt: &closedAt,
-	})
+	}); err != nil {
+		return fmt.Errorf("write issue 2: %w", err)
+	}
+
+	return nil
 }
 
 func TestFakeIssueExporter(t *testing.T) {

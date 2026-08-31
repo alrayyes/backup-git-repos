@@ -3,17 +3,41 @@ linters:
   default: standard
   enable:
     - bodyclose
+    - dupl
+    - err113
     - errorlint
+    - funlen
+    - gocognit
     - gocritic
     - gocyclo
     - gosec
+    - makezero
     - misspell
+    - modernize
+    - nlreturn
+    - nolintlint
+    - perfsprint
     - revive
     - sqlclosecheck
+    - testifylint
+    - thelper
+    - unparam
+    - usestdlibvars
     - whitespace
+    - wrapcheck
   settings:
+    gocognit:
+      min-complexity: 15
+    gocritic:
+      enabled-checks:
+        - emptyStringTest
     gocyclo:
       min-complexity: 15
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    testifylint:
+      enable-all: true
   exclusions:
     rules:
       # gosec's file-inclusion and subprocess-argument findings are about
@@ -22,6 +46,9 @@ linters:
       - path: _test\.go
         linters:
           - gosec
+      - path: _test\.go
+        linters:
+          - dupl
 formatters:
   enable:
     - gci

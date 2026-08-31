@@ -77,6 +77,7 @@ func (m Mirror) clone(ctx context.Context, git string, r Remote, dir string) err
 	if err := os.Rename(partial, dir); err != nil {
 		return fmt.Errorf("mirror clone %s: %w", r.CloneURL, err)
 	}
+
 	return nil
 }
 
@@ -91,6 +92,7 @@ func (m Mirror) update(ctx context.Context, git string, r Remote, dir string) er
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("mirror update %s: %w: %s", r.CloneURL, err, out)
 	}
+
 	return nil
 }
 
@@ -102,6 +104,7 @@ func (m Mirror) gitPath() (string, error) {
 	if err != nil {
 		return "", ErrGitNotFound
 	}
+
 	return p, nil
 }
 
@@ -145,5 +148,6 @@ func gitEnv() []string {
 		}
 		filtered = append(filtered, kv)
 	}
+
 	return filtered
 }

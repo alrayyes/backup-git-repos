@@ -31,11 +31,13 @@ func Archive(dir, out string) error {
 	tmp := out + ".tmp"
 	if err := writeArchive(dir, tmp); err != nil {
 		_ = os.Remove(tmp)
+
 		return fmt.Errorf("archive %s: %w", dir, err)
 	}
 	if err := os.Rename(tmp, out); err != nil {
 		return fmt.Errorf("archive %s: %w", dir, err)
 	}
+
 	return nil
 }
 
@@ -47,7 +49,7 @@ var epoch = time.Unix(0, 0).UTC()
 func writeArchive(dir, out string) error {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
-		return err
+		return fmt.Errorf("open root %s: %w", dir, err)
 	}
 	defer func() { _ = root.Close() }()
 
@@ -58,7 +60,7 @@ func writeArchive(dir, out string) error {
 
 	f, err := os.Create(out) //nolint:gosec // out is this package's own destination path, built from opts.ArchiveDir and a repo's namespace, not attacker input
 	if err != nil {
-		return err
+		return fmt.Errorf("create %s: %w", out, err)
 	}
 	defer func() { _ = f.Close() }()
 
@@ -72,7 +74,7 @@ func writeArchive(dir, out string) error {
 		Mode:     0o755,
 		ModTime:  epoch,
 	}); err != nil {
-		return err
+		return fmt.Errorf("write tar header for %s: %w", prefix, err)
 	}
 
 	for _, p := range paths {
@@ -82,12 +84,16 @@ func writeArchive(dir, out string) error {
 	}
 
 	if err := tw.Close(); err != nil {
-		return err
+		return fmt.Errorf("close tar writer: %w", err)
 	}
 	if err := gz.Close(); err != nil {
-		return err
+		return fmt.Errorf("close gzip writer: %w", err)
 	}
-	return f.Close()
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close %s: %w", out, err)
+	}
+
+	return nil
 }
 
 func sortedPaths(root *os.Root) ([]string, error) {
@@ -99,32 +105,34 @@ func sortedPaths(root *os.Root) ([]string, error) {
 		if p != "." {
 			paths = append(paths, p)
 		}
+
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("walk %s: %w", root.Name(), err)
 	}
 	slices.Sort(paths)
+
 	return paths, nil
 }
 
 func writeEntry(tw *tar.Writer, root *os.Root, prefix, p string) error {
 	info, err := root.Lstat(p)
 	if err != nil {
-		return err
+		return fmt.Errorf("stat %s: %w", p, err)
 	}
 
 	var link string
 	if info.Mode()&fs.ModeSymlink != 0 {
 		link, err = fs.ReadLink(root.FS(), p)
 		if err != nil {
-			return err
+			return fmt.Errorf("read link %s: %w", p, err)
 		}
 	}
 
 	header, err := tar.FileInfoHeader(info, link)
 	if err != nil {
-		return err
+		return fmt.Errorf("build tar header for %s: %w", p, err)
 	}
 	header.Name = prefix + "/" + p
 	header.ModTime = epoch
@@ -138,7 +146,7 @@ func writeEntry(tw *tar.Writer, root *os.Root, prefix, p string) error {
 	}
 
 	if err := tw.WriteHeader(header); err != nil {
-		return err
+		return fmt.Errorf("write tar header for %s: %w", p, err)
 	}
 
 	if !info.Mode().IsRegular() {
@@ -147,10 +155,13 @@ func writeEntry(tw *tar.Writer, root *os.Root, prefix, p string) error {
 
 	src, err := root.Open(p)
 	if err != nil {
-		return err
+		return fmt.Errorf("open %s: %w", p, err)
 	}
 	defer func() { _ = src.Close() }()
 
-	_, err = io.Copy(tw, src)
-	return err
+	if _, err := io.Copy(tw, src); err != nil {
+		return fmt.Errorf("copy %s: %w", p, err)
+	}
+
+	return nil
 }

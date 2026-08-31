@@ -34,6 +34,7 @@ func (f *fakeLister) ListRepos(_ context.Context, state backup.State) ([]backup.
 			out = append(out, r)
 		}
 	}
+
 	return out, nil
 }
 

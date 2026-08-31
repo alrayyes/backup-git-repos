@@ -17,10 +17,12 @@ import (
 // ordinary repo and one Forgejo reports as a mirror.
 func searchServer(t *testing.T) *httptest.Server {
 	t.Helper()
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Query().Get("page") != "" && r.URL.Query().Get("page") != "1" {
 			_, _ = w.Write([]byte(`{"data":[]}`))
+
 			return
 		}
 		_, _ = w.Write([]byte(`{"data":[
