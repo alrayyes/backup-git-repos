@@ -18,6 +18,7 @@ func isTerminalWriter(w io.Writer) bool {
 	if !ok {
 		return false
 	}
+
 	return term.IsTerminal(int(f.Fd()))
 }
 
@@ -33,6 +34,7 @@ func newProgressReporter(w io.Writer, label string, tty bool) func(done, total i
 	}
 
 	var mu sync.Mutex
+
 	return func(done, total int) {
 		mu.Lock()
 		defer mu.Unlock()

@@ -28,25 +28,30 @@ const commentsPageSize = 50
 // silently stopping at the server's own default page size.
 func issuePaginationServer(t *testing.T) *httptest.Server {
 	t.Helper()
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if strings.HasSuffix(r.URL.Path, "/issues") {
 			if r.URL.Query().Get("page") != "1" {
 				_, _ = w.Write([]byte(`[]`))
+
 				return
 			}
 			_, _ = w.Write([]byte(`[{"number":1,"title":"an issue with many comments","user":{"login":"alice"},"state":"open"}]`))
+
 			return
 		}
 
 		page := r.URL.Query().Get("page")
 		if page == "2" {
 			_, _ = w.Write([]byte(`[{"user":{"login":"bob"},"body":"comment 51 (from page 2)"}]`))
+
 			return
 		}
 		if page != "1" {
 			_, _ = w.Write([]byte(`[]`))
+
 			return
 		}
 

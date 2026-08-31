@@ -57,6 +57,7 @@ func filterGitEnv(env []string) []string {
 		}
 		filtered = append(filtered, kv)
 	}
+
 	return filtered
 }
 
@@ -134,5 +135,6 @@ func gitLog(t *testing.T, dir string) string {
 	cmd.Env = filterGitEnv(os.Environ())
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+
 	return string(out)
 }

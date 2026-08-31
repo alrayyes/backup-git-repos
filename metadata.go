@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -52,6 +53,7 @@ func ParseMetadataKinds(vals []string) ([]MetadataKind, error) {
 		}
 		kinds = append(kinds, k)
 	}
+
 	return kinds, nil
 }
 
@@ -85,12 +87,7 @@ type MetadataExporter interface {
 // wantsMetadata reports whether kind is one of the kinds opts.ExportMetadata
 // asked for.
 func wantsMetadata(kinds []MetadataKind, kind MetadataKind) bool {
-	for _, k := range kinds {
-		if k == kind {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(kinds, kind)
 }
 
 // metadataDir is where a repository's exported metadata lives on disk, a
@@ -152,5 +149,6 @@ func WriteIssue(dir string, issue Issue) error {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write issue %d: %w", issue.Number, err)
 	}
+
 	return nil
 }

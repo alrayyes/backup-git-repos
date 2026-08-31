@@ -87,6 +87,7 @@ func LoadConfig(path string) (Config, error) {
 
 		if f.TokenLiteral != "" {
 			cfg.Forges[i].Token = f.TokenLiteral
+
 			continue
 		}
 

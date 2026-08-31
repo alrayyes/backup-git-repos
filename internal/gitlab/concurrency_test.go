@@ -42,11 +42,13 @@ func TestListReposFetchesProjectDetailsConcurrently(t *testing.T) {
 			observeInFlight(&inFlight, &maxInFlight)
 			time.Sleep(latency)
 			_, _ = w.Write([]byte(`[]`))
+
 			return
 		}
 
 		if r.URL.Query().Get("archived") == "true" {
 			_, _ = w.Write([]byte(`[]`))
+
 			return
 		}
 		_, _ = w.Write([]byte(projectListJSON(projectCount)))
@@ -119,5 +121,6 @@ func projectListJSON(n int) string {
 			`{"path_with_namespace":"team/project-%d","archived":false,"empty_repo":false}`, i)
 	}
 	b.WriteByte(']')
+
 	return b.String()
 }
