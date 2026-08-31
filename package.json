@@ -4,17 +4,19 @@
   "private": true,
   "description": "Tooling config for backup-git-repos; the tool itself is Go",
   "scripts": {
-    "prepare": "lefthook install",
     "format:md": "prettier --check '**/*.md'",
     "format:md:fix": "prettier --write '**/*.md'",
+    "lint:dockerfile": "docker run --rm -v \"$PWD:/repo:ro\" -w /repo hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552 hadolint Dockerfile",
+    "lint:json": "biome check",
+    "lint:json:fix": "biome check --write",
     "lint:md": "markdownlint-cli2",
     "lint:md:fix": "markdownlint-cli2 --fix",
+    "lint:package-json": "sort-package-json --check package.json",
+    "lint:package-json:fix": "sort-package-json package.json",
     "lint:prose": "vale sync && vale --glob='!{node_modules/**,styles/**,.claude/**,CHANGELOG.md}' .",
     "lint:yaml": "prettier --check '**/*.{yml,yaml}'",
     "lint:yaml:fix": "prettier --write '**/*.{yml,yaml}'",
-    "lint:json": "biome check",
-    "lint:json:fix": "biome check --write",
-    "lint:dockerfile": "docker run --rm -v \"$PWD:/repo:ro\" -w /repo hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552 hadolint Dockerfile"
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",
@@ -23,7 +25,8 @@
     "@vvago/vale": "3.17.1",
     "lefthook": "2.1.10",
     "markdownlint-cli2": "0.23.2",
-    "prettier": "3.9.6"
+    "prettier": "3.9.6",
+    "sort-package-json": "4.0.0"
   },
   "trustedDependencies": [
     "@vvago/vale",

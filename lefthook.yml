@@ -78,6 +78,13 @@ pre-commit:
       glob: "Dockerfile"
       run: bun run lint:dockerfile
 
+    # Keeps package.json itself canonical the way Prettier does for
+    # everything else -- see rules/javascript.md.
+    - name: sort-package-json
+      glob: "package.json"
+      run: ./node_modules/.bin/sort-package-json {staged_files}
+      stage_fixed: true
+
 commit-msg:
   jobs:
     - name: commitlint
@@ -128,3 +135,21 @@ pre-push:
 
     - name: hadolint
       run: bun run lint:dockerfile
+
+    - name: sort-package-json
+      run: ./node_modules/.bin/sort-package-json --check package.json
+
+    # go.mod's own canonicalizer -- gofmt never touches it. No built-in
+    # check-only flag, so diff against what -fmt would produce.
+    - name: go-mod-fmt
+      run: |
+        go mod edit -fmt go.mod
+        git diff --exit-code go.mod
+
+    # Broader than -mod=readonly's missing-require check: a stale require
+    # go build/test won't fail on, a non-canonical version string, a
+    # go.sum entry nothing imports anymore. Network only when something's
+    # missing from a warm module cache -- heavier than pure formatting,
+    # which is why it's here and not pre-commit.
+    - name: go-mod-tidy
+      run: go mod tidy -diff
