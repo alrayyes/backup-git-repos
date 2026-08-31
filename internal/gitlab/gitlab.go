@@ -5,6 +5,7 @@ package gitlab
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,6 +19,10 @@ import (
 )
 
 const pageSize = 100
+
+// ErrUnexpectedStatus means the GitLab API returned a status code the
+// client didn't expect for the request it made.
+var ErrUnexpectedStatus = errors.New("unexpected status")
 
 // projectDetailConcurrency bounds how many projects' wiki and snippet
 // lookups run in flight at once within one page of listByArchived. A
@@ -56,6 +61,7 @@ func (c *Client) logger() *slog.Logger {
 	if c.Logger != nil {
 		return c.Logger
 	}
+
 	return slog.Default()
 }
 
@@ -65,6 +71,7 @@ func New(base, token string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse gitlab url: %w", err)
 	}
+
 	return &Client{BaseURL: u, Token: token}, nil
 }
 
@@ -102,6 +109,7 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 		if err != nil {
 			return nil, err
 		}
+
 		return append(active, archived...), nil
 	}
 
@@ -157,12 +165,13 @@ func (c *Client) projectRepos(ctx context.Context, projects []project) ([]backup
 				return err
 			}
 			results[i] = repos
+
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve project details: %w", err)
 	}
 
 	return slices.Concat(results...), nil
@@ -211,7 +220,7 @@ func (c *Client) fetchProjectsPage(ctx context.Context, page int, archived bool)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("list gitlab projects: unexpected status %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("list gitlab projects: %w: %d", ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	var projects []project
@@ -230,6 +239,7 @@ func (c *Client) projectsURL(page int, archived bool) *url.URL {
 	q.Set("page", strconv.Itoa(page))
 	q.Set("archived", strconv.FormatBool(archived))
 	u.RawQuery = q.Encode()
+
 	return u
 }
 
@@ -243,6 +253,7 @@ func (c *Client) projectSubURL(projectPath, sub string, page int) *url.URL {
 	q.Set("per_page", strconv.Itoa(pageSize))
 	q.Set("page", strconv.Itoa(page))
 	u.RawQuery = q.Encode()
+
 	return u
 }
 
@@ -258,28 +269,30 @@ func (c *Client) projectSubURL(projectPath, sub string, page int) *url.URL {
 func (c *Client) getOptional(ctx context.Context, u *url.URL, resource, projectPath string, out any) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("build request for %s: %w", u, err)
 	}
 	req.Header.Set("PRIVATE-TOKEN", c.Token)
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get %s: %w", u, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusForbidden {
 		c.logger().Info("gitlab project resource not accessible, treating as empty",
 			"resource", resource, "project", projectPath)
+
 		return "", nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status %d", resp.StatusCode)
+		return "", fmt.Errorf("get %s: %w: %d", u, ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return "", err
+		return "", fmt.Errorf("decode response from %s: %w", u, err)
 	}
+
 	return resp.Header.Get("x-next-page"), nil
 }
 
@@ -287,5 +300,6 @@ func (c *Client) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
+
 	return http.DefaultClient
 }
