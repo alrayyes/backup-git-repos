@@ -5,6 +5,7 @@ package forgejo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,6 +17,10 @@ import (
 )
 
 const pageSize = 50
+
+// ErrUnexpectedStatus means the Forgejo API returned a status code the
+// client didn't expect for the request it made.
+var ErrUnexpectedStatus = errors.New("unexpected status")
 
 // Client lists and mirrors repositories from a self-hosted Forgejo instance.
 type Client struct {
@@ -41,6 +46,7 @@ func New(base, token string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse forgejo url: %w", err)
 	}
+
 	return &Client{BaseURL: u, Token: token}, nil
 }
 
@@ -53,6 +59,7 @@ func (c *Client) logger() *slog.Logger {
 	if c.Logger != nil {
 		return c.Logger
 	}
+
 	return slog.Default()
 }
 
@@ -106,6 +113,7 @@ func (c *Client) ListRepos(ctx context.Context, state backup.State) ([]backup.Re
 		for _, r := range body.Data {
 			if c.SkipMirrors && r.Mirror {
 				c.logger().Info("skipping mirror repository", "path", r.FullName)
+
 				continue
 			}
 			repos = append(repos, backup.Repo{Path: r.FullName, Archived: r.Archived, Empty: r.Empty})
@@ -133,13 +141,14 @@ func (c *Client) fetchSearchPage(ctx context.Context, page int, state backup.Sta
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return searchResponse{}, fmt.Errorf("list forgejo repos: unexpected status %d", resp.StatusCode)
+		return searchResponse{}, fmt.Errorf("list forgejo repos: %w: %d", ErrUnexpectedStatus, resp.StatusCode)
 	}
 
 	var body searchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return searchResponse{}, fmt.Errorf("list forgejo repos: decode response: %w", err)
 	}
+
 	return body, nil
 }
 
@@ -152,6 +161,7 @@ func (c *Client) searchURL(page int, state backup.State) *url.URL {
 		q.Set("archived", strconv.FormatBool(state == backup.StateArchived))
 	}
 	u.RawQuery = q.Encode()
+
 	return u
 }
 
@@ -159,5 +169,6 @@ func (c *Client) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
+
 	return http.DefaultClient
 }
