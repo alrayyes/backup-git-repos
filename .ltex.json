@@ -47,6 +47,7 @@
       "subprocesses",
       "runtime",
       "Dependabot",
+      "stdin",
       "stdout",
       "stderr",
       "hadolint",

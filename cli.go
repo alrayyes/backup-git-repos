@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // ErrBadState means --state wasn't one of all, active, or archived.
@@ -71,11 +72,41 @@ type cliFlags struct {
 // directly without a cycle. The composition root (main) supplies one.
 type NewRunner func(ForgeConfig) (Runner, error)
 
+// Option customizes NewRootCommand's behavior beyond its required
+// arguments.
+type Option func(*rootOptions)
+
+type rootOptions struct {
+	// interactive reports whether stdin is an interactive terminal worth
+	// prompting at. Defaults to real-terminal detection; tests can't
+	// otherwise force this one way or the other without a real pty, so
+	// WithInteractive exists to override it directly.
+	interactive func() bool
+}
+
+// WithInteractive overrides interactive-terminal detection with a fixed
+// answer, instead of checking whether stdin is a real terminal. Exists for
+// tests to exercise the config-init prompt (see resolveConfigPath)
+// deterministically; a caller wiring up the real CLI has no reason to use
+// it.
+func WithInteractive(interactive bool) Option {
+	return func(o *rootOptions) {
+		o.interactive = func() bool { return interactive }
+	}
+}
+
 // NewRootCommand builds the backup-git-repos command line. Each RunE stays a
 // thin shell: parse and validate the flags, then call into runBackup, which
 // knows nothing about cobra.
-func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
+func NewRootCommand(version string, newRunner NewRunner, opts ...Option) *cobra.Command {
 	var flags cliFlags
+
+	ropts := rootOptions{
+		interactive: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
+	}
+	for _, opt := range opts {
+		opt(&ropts)
+	}
 
 	root := &cobra.Command{
 		Use:           "backup-git-repos",
@@ -90,7 +121,7 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 		Use:   "run",
 		Short: "Mirror repositories from the configured forges",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBackup(cmd, flags, newRunner, false)
+			return runBackup(cmd, flags, newRunner, false, ropts.interactive)
 		},
 	}
 	addRunFlags(runCmd, &flags)
@@ -108,7 +139,7 @@ func NewRootCommand(version string, newRunner NewRunner) *cobra.Command {
 		Use:   "list",
 		Short: "Print what would be backed up, clone nothing",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBackup(cmd, flags, newRunner, true)
+			return runBackup(cmd, flags, newRunner, true, ropts.interactive)
 		},
 	}
 	addRunFlags(listCmd, &flags)
@@ -133,8 +164,8 @@ func addRunFlags(cmd *cobra.Command, flags *cliFlags) {
 	cmd.Flags().DurationVar(&flags.timeout, "timeout", 30*time.Minute, "per-repository timeout")
 }
 
-func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly bool) error {
-	configPath, err := resolveConfigPath(flags.config)
+func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly bool, interactive func() bool) error {
+	configPath, err := resolveConfigPath(cmd, flags, interactive)
 	if err != nil {
 		return err
 	}
@@ -180,19 +211,36 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 // otherwise falls back to defaultConfigPath -- but only when a file
 // actually exists there, so a bare `run` doesn't silently pick up
 // whatever's sitting in $XDG_CONFIG_HOME when the user never asked for it.
-func resolveConfigPath(explicit string) (string, error) {
-	if explicit != "" {
-		return expandHome(explicit)
+//
+// A genuinely unconfigured first run (no --config, nothing at the default
+// path) offers to write a starter file right there when stdin looks
+// interactive, rather than only ever erroring or silently doing nothing --
+// the same first-run nudge `git init`/`aws configure` give. A declined or
+// non-interactive prompt falls back to the plain error either way.
+func resolveConfigPath(cmd *cobra.Command, flags cliFlags, interactive func() bool) (string, error) {
+	if flags.config != "" {
+		return expandHome(flags.config)
 	}
 
 	path, err := defaultConfigPath()
 	if err != nil {
 		return "", err
 	}
-	if _, err := os.Stat(path); err != nil {
-		return "", fmt.Errorf("--config is required: no config file at the default path %s", path)
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
 	}
-	return path, nil
+
+	if interactive != nil && interactive() {
+		wrote, err := promptConfigInit(cmd, flags, path)
+		if err != nil {
+			return "", err
+		}
+		if wrote {
+			return "", fmt.Errorf("wrote a starter config to %s -- edit it and run again", path)
+		}
+	}
+
+	return "", fmt.Errorf("--config is required: no config file at the default path %s", path)
 }
 
 // resolveDestPaths applies the --dest/config-file fallback and --archive-dir's

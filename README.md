@@ -127,8 +127,11 @@ existing file unless you pass `--force`.
 `run` and `list` read from that same default path when you don't pass
 `--config` yourself, so once `config init` has written it, plain
 `backup-git-repos run` is enough. `--config` still wins when you pass it,
-and without it and with nothing at the default path either, the tool exits
-telling you which path it checked.
+and without it and with nothing at the default path either, the tool
+offers to run `config init` right there when stdin looks like an
+interactive terminal, or just exits telling you which path it checked
+when it doesn't -- a script or a CI job never gets stuck waiting on a
+prompt it can't answer.
 
 ```bash
 backup-git-repos config init

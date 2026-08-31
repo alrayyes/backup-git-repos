@@ -1,10 +1,13 @@
 package backup
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -74,6 +77,30 @@ func runConfigInit(cmd *cobra.Command, flags cliFlags, force bool) error {
 
 	cmd.Println("wrote config to " + path)
 	return nil
+}
+
+// promptConfigInit asks whether to write a starter config to path, reads a
+// single line off cmd.InOrStdin(), and runs the same write runConfigInit's
+// own command does on anything read as yes. Declining, or reading nothing
+// at all (an immediately closed stdin), counts as no -- this is a [y/N]
+// prompt, not a [Y/n] one.
+func promptConfigInit(cmd *cobra.Command, flags cliFlags, path string) (bool, error) {
+	cmd.Println("no config file found at " + path)
+	cmd.Print("run `config init` now? [y/N] ")
+
+	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, fmt.Errorf("read answer: %w", err)
+	}
+	answer := strings.TrimSpace(line)
+	if !strings.EqualFold(answer, "y") && !strings.EqualFold(answer, "yes") {
+		return false, nil
+	}
+
+	if err := runConfigInit(cmd, flags, false); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // configInitPath is where `config init` writes: --config/-c if given,

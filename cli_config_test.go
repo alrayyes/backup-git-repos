@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	backup "github.com/alrayyes/backup-git-repos"
@@ -88,4 +89,52 @@ func TestCLIConfigInitOverwritesWithForce(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(contents), "forges:")
 	require.NotEqual(t, "dest: /already/here\n", string(contents))
+}
+
+func TestCLIRunOffersConfigInitWhenNoneFoundAndInteractive(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	root := backup.NewRootCommand("test", neverNewRunner(t), backup.WithInteractive(true))
+	root.SetOut(new(bytes.Buffer))
+	root.SetIn(strings.NewReader("y\n"))
+	root.SetArgs([]string{"run", "--dest", "/tmp/dest"})
+
+	err := root.Execute()
+
+	require.Error(t, err) // nothing to back up yet -- the point is to bootstrap, then stop.
+	path := filepath.Join(xdg, "backup-git-repos", "config.yaml")
+	require.FileExists(t, path)
+}
+
+func TestCLIRunConfigInitPromptDeclinedFallsBackToError(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	root := backup.NewRootCommand("test", neverNewRunner(t), backup.WithInteractive(true))
+	root.SetOut(new(bytes.Buffer))
+	root.SetIn(strings.NewReader("n\n"))
+	root.SetArgs([]string{"run", "--dest", "/tmp/dest"})
+
+	err := root.Execute()
+
+	require.ErrorContains(t, err, "--config is required")
+	require.NoFileExists(t, filepath.Join(xdg, "backup-git-repos", "config.yaml"))
+}
+
+func TestCLIRunSkipsConfigInitPromptWithoutInteractive(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+
+	// No WithInteractive(true): defaults to real-terminal detection, which
+	// a test process's stdin never satisfies -- exactly the case this
+	// covers, without needing a real pty to prove it.
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--dest", "/tmp/dest"})
+
+	err := root.Execute()
+
+	require.ErrorContains(t, err, "--config is required")
+	require.NoFileExists(t, filepath.Join(xdg, "backup-git-repos", "config.yaml"))
 }
