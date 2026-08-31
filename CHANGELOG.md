@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/alrayyes/backup-git-repos/compare/v1.5.0...v1.6.0) (2026-08-30)
+
+
+### Features
+
+* export repository issues and their comments ([#97](https://github.com/alrayyes/backup-git-repos/issues/97)) ([10674df](https://github.com/alrayyes/backup-git-repos/commit/10674dfbace9c34c7742bbecf6a2c47773a7d7bf))
+
+
+### Performance Improvements
+
+* **gitlab:** fetch wiki and snippet lookups concurrently across projects ([#95](https://github.com/alrayyes/backup-git-repos/issues/95)) ([da9e1b8](https://github.com/alrayyes/backup-git-repos/commit/da9e1b80cf17fbc700fc4da5f0bf0267494c4f80))
+
 ## [1.5.0](https://github.com/alrayyes/backup-git-repos/compare/v1.4.2...v1.5.0) (2026-08-30)
 
 
