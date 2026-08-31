@@ -27,6 +27,10 @@ forges: []
 #     token: paste-your-token-here
 `
 
+// ErrConfigExists means `config init` found a config file already at the
+// target path and wasn't given --force to overwrite it.
+var ErrConfigExists = errors.New("config already exists")
+
 func newConfigCommand(flags *cliFlags) *cobra.Command {
 	var force bool
 
@@ -45,6 +49,7 @@ func newConfigCommand(flags *cliFlags) *cobra.Command {
 	initCmd.Flags().BoolVar(&force, "force", false, "overwrite an existing config file")
 
 	configCmd.AddCommand(initCmd)
+
 	return configCmd
 }
 
@@ -56,9 +61,9 @@ func runConfigInit(cmd *cobra.Command, flags cliFlags, force bool) error {
 
 	if !force {
 		if _, err := os.Stat(path); err == nil {
-			return fmt.Errorf("config already exists at %s (use --force to overwrite)", path)
+			return fmt.Errorf("%w at %s (use --force to overwrite)", ErrConfigExists, path)
 		} else if !errors.Is(err, os.ErrNotExist) {
-			return err
+			return fmt.Errorf("stat %s: %w", path, err)
 		}
 	}
 
@@ -66,16 +71,17 @@ func runConfigInit(cmd *cobra.Command, flags cliFlags, force bool) error {
 	// directory itself starts unreadable by anyone but the owner and group
 	// too, not just the file.
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return err
+		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}
 	// 0o600: a config file can carry a literal token (see the `token` field
 	// in Config), so it starts private rather than readable by anyone who
 	// can already read the rest of $XDG_CONFIG_HOME.
 	if err := os.WriteFile(path, []byte(exampleConfig), 0o600); err != nil {
-		return err
+		return fmt.Errorf("write %s: %w", path, err)
 	}
 
 	cmd.Println("wrote config to " + path)
+
 	return nil
 }
 
@@ -109,6 +115,7 @@ func configInitPath(flags cliFlags) (string, error) {
 	if flags.config != "" {
 		return expandHome(flags.config)
 	}
+
 	return defaultConfigPath()
 }
 
@@ -121,5 +128,6 @@ func defaultConfigPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("find config directory: %w", err)
 	}
+
 	return filepath.Join(dir, "backup-git-repos", "config.yaml"), nil
 }

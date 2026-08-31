@@ -145,17 +145,9 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		log = slog.Default()
 	}
 
-	repos, err := r.Lister.ListRepos(ctx, opts.State)
+	repos, canonical, err := r.listRepos(ctx, opts.State)
 	if err != nil {
-		return Result{}, fmt.Errorf("run: %w", err)
-	}
-
-	canonical := repos
-	if opts.State != StateAll {
-		canonical, err = r.Lister.ListRepos(ctx, StateAll)
-		if err != nil {
-			return Result{}, fmt.Errorf("run: %w", err)
-		}
+		return Result{}, err
 	}
 
 	stale, err := staleMirrors(opts.Dest, opts.ArchiveDir, canonical)
@@ -168,18 +160,7 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 		concurrency = runtime.GOMAXPROCS(0)
 	}
 
-	var synced, skipped, failed, archived, metadataExported, done atomic.Int64
-	total := len(repos)
-	var progressMu sync.Mutex
-	reportDone := func() {
-		n := int(done.Add(1))
-		if opts.Progress == nil {
-			return
-		}
-		progressMu.Lock()
-		defer progressMu.Unlock()
-		opts.Progress(n, total)
-	}
+	counters := &runCounters{total: len(repos), progress: opts.Progress}
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
@@ -187,32 +168,16 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 	for _, repo := range repos {
 		if repo.Empty {
 			log.Warn("skipping empty repository", "path", repo.Path)
-			skipped.Add(1)
-			reportDone()
+			counters.skipped.Add(1)
+			counters.reportDone()
+
 			continue
 		}
 
 		g.Go(func() error {
-			defer reportDone()
+			defer counters.reportDone()
+			r.runRepo(ctx, opts, repo, log, counters)
 
-			repoCtx := ctx
-			if opts.Timeout > 0 {
-				var cancel context.CancelFunc
-				repoCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
-				defer cancel()
-			}
-
-			outcome := r.mirrorRepo(repoCtx, opts, repo, log)
-			if outcome.synced {
-				synced.Add(1)
-			}
-			if outcome.archived {
-				archived.Add(1)
-			}
-			if outcome.failed {
-				failed.Add(1)
-			}
-			metadataExported.Add(int64(outcome.metadataExported))
 			return nil
 		})
 	}
@@ -222,13 +187,82 @@ func (r Runner) Run(ctx context.Context, opts Options) (Result, error) {
 	pruned := prune(opts, stale, log)
 
 	return Result{
-		Synced:           int(synced.Load()),
-		Skipped:          int(skipped.Load()),
-		Failed:           int(failed.Load()),
-		Archived:         int(archived.Load()),
+		Synced:           int(counters.synced.Load()),
+		Skipped:          int(counters.skipped.Load()),
+		Failed:           int(counters.failed.Load()),
+		Archived:         int(counters.archived.Load()),
 		Pruned:           pruned,
-		MetadataExported: int(metadataExported.Load()),
+		MetadataExported: int(counters.metadataExported.Load()),
 	}, nil
+}
+
+// listRepos returns opts.State's own filtered listing alongside a full
+// (StateAll) canonical listing staleMirrors judges staleness against --
+// the same listing when state is already StateAll, a second call
+// otherwise, since a run scoped to a filtered state must still see every
+// repository on the forge to tell a merely-excluded one apart from one
+// that's actually gone.
+func (r Runner) listRepos(ctx context.Context, state State) (repos, canonical []Repo, err error) {
+	repos, err = r.Lister.ListRepos(ctx, state)
+	if err != nil {
+		return nil, nil, fmt.Errorf("run: %w", err)
+	}
+
+	canonical = repos
+	if state != StateAll {
+		canonical, err = r.Lister.ListRepos(ctx, StateAll)
+		if err != nil {
+			return nil, nil, fmt.Errorf("run: %w", err)
+		}
+	}
+
+	return repos, canonical, nil
+}
+
+// runCounters tallies what Run's concurrent workers did, and reports
+// progress as each one finishes. Every field is safe for concurrent use,
+// so a worker goroutine never needs its own locking beyond what's already
+// here -- progressMu only serializes the calls into opts.Progress itself,
+// which Run's own doc comment promises are serialized for the caller.
+type runCounters struct {
+	synced, skipped, failed, archived, metadataExported, done atomic.Int64
+	total                                                     int
+	progressMu                                                sync.Mutex
+	progress                                                  func(done, total int)
+}
+
+func (c *runCounters) reportDone() {
+	n := int(c.done.Add(1))
+	if c.progress == nil {
+		return
+	}
+	c.progressMu.Lock()
+	defer c.progressMu.Unlock()
+	c.progress(n, c.total)
+}
+
+// runRepo mirrors one repository and folds its outcome into c. It's the
+// per-repository unit of work Run's errgroup runs concurrently, bounded
+// by opts.Concurrency.
+func (r Runner) runRepo(ctx context.Context, opts Options, repo Repo, log *slog.Logger, c *runCounters) {
+	repoCtx := ctx
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		repoCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+	}
+
+	outcome := r.mirrorRepo(repoCtx, opts, repo, log)
+	if outcome.synced {
+		c.synced.Add(1)
+	}
+	if outcome.archived {
+		c.archived.Add(1)
+	}
+	if outcome.failed {
+		c.failed.Add(1)
+	}
+	c.metadataExported.Add(int64(outcome.metadataExported))
 }
 
 // mirrorOutcome reports what mirrorRepo actually did, so Run's caller can
@@ -259,6 +293,7 @@ func (r Runner) mirrorRepo(ctx context.Context, opts Options, repo Repo, log *sl
 		scratch, err := os.MkdirTemp("", "backup-git-repos-*")
 		if err != nil {
 			log.Error("mirror failed", "path", repo.Path, "error", err)
+
 			return mirrorOutcome{failed: true}
 		}
 		defer func() { _ = os.RemoveAll(scratch) }()
@@ -267,12 +302,14 @@ func (r Runner) mirrorRepo(ctx context.Context, opts Options, repo Repo, log *sl
 
 	if err := os.MkdirAll(filepath.Dir(dir), 0o750); err != nil {
 		log.Error("mirror failed", "path", repo.Path, "error", err)
+
 		return mirrorOutcome{failed: true}
 	}
 
 	log.Debug("mirroring", "path", repo.Path)
 	if err := r.Mirrorer.Sync(ctx, r.Remoter.Remote(repo), dir); err != nil {
 		log.Error("mirror failed", "path", repo.Path, "error", err)
+
 		return mirrorOutcome{failed: true}
 	}
 
@@ -288,10 +325,12 @@ func (r Runner) mirrorRepo(ctx context.Context, opts Options, repo Repo, log *sl
 	if err := archiveRepo(dir, archiveOut); err != nil {
 		log.Error("archive failed", "path", repo.Path, "error", err)
 		outcome.failed = true
+
 		return outcome
 	}
 
 	outcome.archived = true
+
 	return outcome
 }
 
@@ -315,6 +354,7 @@ func (r Runner) exportMetadata(ctx context.Context, opts Options, repo Repo, log
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			log.Error("metadata export failed", "path", repo.Path, "kind", exp.Kind(), "error", err)
 			failed = true
+
 			continue
 		}
 
@@ -322,10 +362,12 @@ func (r Runner) exportMetadata(ctx context.Context, opts Options, repo Repo, log
 		if err := exp.Export(ctx, repo, dir); err != nil {
 			log.Error("metadata export failed", "path", repo.Path, "kind", exp.Kind(), "error", err)
 			failed = true
+
 			continue
 		}
 		exported++
 	}
+
 	return exported, failed
 }
 
@@ -339,6 +381,7 @@ func prune(opts Options, stale []string, log *slog.Logger) int {
 	for _, path := range stale {
 		if !opts.PruneRemoved {
 			log.Warn("mirror's repository no longer found on forge", "path", path)
+
 			continue
 		}
 
@@ -349,6 +392,7 @@ func prune(opts Options, stale []string, log *slog.Logger) int {
 		// the count or leave the mirror behind out of caution.
 		if err := os.RemoveAll(mirrorPath(opts.Dest, path)); err != nil {
 			log.Error("prune failed", "path", path, "error", err)
+
 			continue
 		}
 		pruned++
@@ -359,6 +403,7 @@ func prune(opts Options, stale []string, log *slog.Logger) int {
 			log.Error("pruned mirror but its archive could not be removed", "path", path, "error", err)
 		}
 	}
+
 	return pruned
 }
 
@@ -394,6 +439,7 @@ func staleMirrors(dest, archiveDir string, repos []Repo) ([]string, error) {
 		if err != nil {
 			return fmt.Errorf("scan %s: %w", dest, err)
 		}
+
 		return nil
 	})
 	g.Go(func() error {
@@ -402,10 +448,11 @@ func staleMirrors(dest, archiveDir string, repos []Repo) ([]string, error) {
 		if err != nil {
 			return fmt.Errorf("scan %s: %w", archiveDir, err)
 		}
+
 		return nil
 	})
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan for stale mirrors: %w", err)
 	}
 
 	seen := make(map[string]bool, len(mirrors)+len(archives))
@@ -418,6 +465,7 @@ func staleMirrors(dest, archiveDir string, repos []Repo) ([]string, error) {
 		stale = append(stale, path)
 	}
 	slices.Sort(stale)
+
 	return stale, nil
 }
 
@@ -435,7 +483,7 @@ func onDiskPaths(root, suffix string, keep func(fs.DirEntry) bool) ([]string, er
 	if _, err := os.Stat(root); errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("stat %s: %w", root, err)
 	}
 
 	var paths []string
@@ -449,17 +497,19 @@ func onDiskPaths(root, suffix string, keep func(fs.DirEntry) bool) ([]string, er
 
 		rel, err := filepath.Rel(root, p)
 		if err != nil {
-			return err
+			return fmt.Errorf("relativize %s: %w", p, err)
 		}
 		paths = append(paths, filepath.ToSlash(strings.TrimSuffix(rel, suffix)))
 		if d.IsDir() {
 			return filepath.SkipDir
 		}
+
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("walk %s: %w", root, err)
 	}
+
 	return paths, nil
 }
 
@@ -468,7 +518,8 @@ func onDiskPaths(root, suffix string, keep func(fs.DirEntry) bool) ([]string, er
 // deep needs the same nesting created in the archive directory too.
 func archiveRepo(dir, out string) error {
 	if err := os.MkdirAll(filepath.Dir(out), 0o750); err != nil {
-		return err
+		return fmt.Errorf("create %s: %w", filepath.Dir(out), err)
 	}
+
 	return Archive(dir, out)
 }
