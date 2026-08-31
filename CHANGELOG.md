@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/alrayyes/backup-git-repos/compare/v1.6.0...v1.7.0) (2026-08-31)
+
+
+### Features
+
+* **cli:** offer to run config init on a genuinely unconfigured run ([#103](https://github.com/alrayyes/backup-git-repos/issues/103)) ([53421f5](https://github.com/alrayyes/backup-git-repos/commit/53421f58bd43beb804d756405ff709865086df3b))
+
 ## [1.6.0](https://github.com/alrayyes/backup-git-repos/compare/v1.5.0...v1.6.0) (2026-08-30)
 
 
