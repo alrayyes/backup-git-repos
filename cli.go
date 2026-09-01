@@ -319,7 +319,7 @@ func resolveConfigPath(cmd *cobra.Command, flags cliFlags, interactive func() bo
 		}
 	}
 
-	return "", fmt.Errorf("%w: %s", ErrConfigRequired, path)
+	return "", fmt.Errorf("%w: %s -- run \"config init\" to create one", ErrConfigRequired, path)
 }
 
 // resolveDestPaths applies the --dest/config-file fallback and --archive-dir's
