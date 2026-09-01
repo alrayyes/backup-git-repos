@@ -162,7 +162,7 @@ func (e *ReleaseExporter) fetchReleasesPage(ctx context.Context, repoPath string
 	u.RawQuery = q.Encode()
 
 	var items []forgeRelease
-	if err := getJSON(ctx, e.Client, u, &items); err != nil {
+	if err := e.Client.getJSON(ctx, u, &items); err != nil {
 		return nil, fmt.Errorf("list forgejo releases for %s: %w", repoPath, err)
 	}
 

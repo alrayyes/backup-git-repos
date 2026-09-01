@@ -5,6 +5,7 @@ package forgejo_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -82,10 +83,12 @@ func mintToken(ctx context.Context, t *testing.T, ctr *tcforgejo.Container) stri
 // archived after creation, since the create endpoint has no such field),
 // team/empty-repo, and a personal repository under the admin account.
 // team/active-repo also gets the two issues backup.TestIssueExporter
-// expects (see seedIssues below) and, to prove #81's issues-only filter, a
-// pull request -- Forgejo's issues endpoint returns pull requests
-// alongside real issues unless the exporter asks for type=issues, so a
-// pull request among the fixtures is what would catch a regression there.
+// expects (see seedIssues below), the two pull requests
+// backup.TestPullRequestExporter expects (see seedPullRequests below) and,
+// to prove #81's issues-only filter, a bare pull request with neither --
+// Forgejo's issues endpoint returns pull requests alongside real issues
+// unless the exporter asks for type=issues, so a pull request among the
+// fixtures is what would catch a regression there.
 func (f fixture) seed(t *testing.T) {
 	t.Helper()
 
@@ -99,6 +102,7 @@ func (f fixture) seed(t *testing.T) {
 	f.seedIssues(t)
 	f.seedPullRequest(t)
 	f.seedReleases(t)
+	f.seedPullRequests(t)
 
 	f.post(t, "/api/v1/orgs/team/repos", map[string]any{"name": "archived-repo", "auto_init": true}, nil)
 	f.patch(t, "/api/v1/repos/team/archived-repo", map[string]any{"archived": true})
@@ -163,6 +167,77 @@ func (f fixture) seedReleases(t *testing.T) {
 	}, nil)
 }
 
+// seedPullRequests creates the two pull requests backup.TestPullRequestExporter
+// expects on team/active-repo: an open one that edits README.md and carries
+// a single diff-anchored review comment on that file, at
+// backup.TestPullRequestReviewCommentLine, and a merged one carrying none --
+// proving both the diff-anchor mapping and #81's own "a pull/merge request
+// with no comments is still written" requirement from the one fixture set.
+func (f fixture) seedPullRequests(t *testing.T) {
+	t.Helper()
+
+	f.seedOpenPullRequestWithReviewComment(t)
+	f.seedMergedPullRequest(t)
+}
+
+func (f fixture) seedOpenPullRequestWithReviewComment(t *testing.T) {
+	t.Helper()
+
+	f.post(t, "/api/v1/repos/team/active-repo/branches",
+		map[string]any{"new_branch_name": "pr-open-branch", "old_ref_name": "main"}, nil)
+
+	var content struct {
+		SHA string `json:"sha"`
+	}
+	f.get(t, "/api/v1/repos/team/active-repo/contents/README.md?ref=pr-open-branch", &content)
+	f.put(t, "/api/v1/repos/team/active-repo/contents/README.md", map[string]any{
+		"branch":  "pr-open-branch",
+		"sha":     content.SHA,
+		"content": base64.StdEncoding.EncodeToString([]byte("active-repo\n")),
+		"message": "edit readme",
+	})
+
+	var pr struct {
+		Number int `json:"number"`
+	}
+	f.post(t, "/api/v1/repos/team/active-repo/pulls", map[string]any{
+		"title": backup.TestPullRequestOpenTitle, "body": "please review this",
+		"head": "pr-open-branch", "base": "main",
+	}, &pr)
+
+	f.post(t, fmt.Sprintf("/api/v1/repos/team/active-repo/pulls/%d/reviews", pr.Number), map[string]any{
+		"event": "COMMENT",
+		"comments": []map[string]any{{
+			"path":         backup.TestPullRequestReviewCommentFile,
+			"new_position": backup.TestPullRequestReviewCommentLine,
+			"body":         backup.TestPullRequestReviewCommentBody,
+		}},
+	}, nil)
+}
+
+func (f fixture) seedMergedPullRequest(t *testing.T) {
+	t.Helper()
+
+	f.post(t, "/api/v1/repos/team/active-repo/branches",
+		map[string]any{"new_branch_name": "pr-merge-branch", "old_ref_name": "main"}, nil)
+	f.post(t, "/api/v1/repos/team/active-repo/contents/merged-file.txt", map[string]any{
+		"branch":  "pr-merge-branch",
+		"content": base64.StdEncoding.EncodeToString([]byte("content\n")),
+		"message": "add a file",
+	}, nil)
+
+	var pr struct {
+		Number int `json:"number"`
+	}
+	f.post(t, "/api/v1/repos/team/active-repo/pulls", map[string]any{
+		"title": backup.TestPullRequestMergedTitle, "body": "already landed",
+		"head": "pr-merge-branch", "base": "main",
+	}, &pr)
+
+	f.post(t, fmt.Sprintf("/api/v1/repos/team/active-repo/pulls/%d/merge", pr.Number),
+		map[string]any{"Do": "merge"}, nil)
+}
+
 // post sends an authenticated JSON POST and requires a 2xx response,
 // decoding the body into out when it's non-nil.
 func (f fixture) post(t *testing.T, path string, body, out any) {
@@ -202,6 +277,12 @@ func (f fixture) postAsset(t *testing.T, path, name, content string) {
 func (f fixture) patch(t *testing.T, path string, body any) {
 	t.Helper()
 	f.do(t, http.MethodPatch, path, body, nil)
+}
+
+// put sends an authenticated JSON PUT and requires a 2xx response.
+func (f fixture) put(t *testing.T, path string, body any) {
+	t.Helper()
+	f.do(t, http.MethodPut, path, body, nil)
 }
 
 // get sends an authenticated GET and decodes the response body into out.

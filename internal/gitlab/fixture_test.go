@@ -102,6 +102,7 @@ func (f *fixture) seed(t *testing.T) {
 		map[string]any{"title": "Home", "content": "hello wiki"}, nil)
 	f.seedIssues(t)
 	f.seedReleases(t)
+	f.seedPullRequests(t)
 
 	var snippet struct {
 		ID int `json:"id"`
@@ -176,6 +177,71 @@ func (f fixture) seedReleases(t *testing.T) {
 		"tag_name": backup.TestReleaseTagNoAssets, "ref": "main",
 		"name": "v0.9.0", "description": "no assets here",
 	}, nil)
+}
+
+// seedPullRequests creates the two merge requests
+// backup.TestPullRequestExporter expects on team/active-repo: an open one
+// that edits README.md and carries a single diff-anchored discussion
+// comment on that file, at backup.TestPullRequestReviewCommentLine, and a
+// merged one carrying none -- proving both the diff-anchor mapping and
+// #81's own "a pull/merge request with no comments is still written"
+// requirement from the one fixture set.
+func (f fixture) seedPullRequests(t *testing.T) {
+	t.Helper()
+
+	f.seedOpenMergeRequestWithReviewComment(t)
+	f.seedMergedMergeRequest(t)
+}
+
+func (f fixture) seedOpenMergeRequestWithReviewComment(t *testing.T) {
+	t.Helper()
+
+	f.post(t, "/api/v4/projects/team%2Factive-repo/repository/branches",
+		map[string]any{"branch": "mr-open-branch", "ref": "main"}, nil)
+	f.put(t, "/api/v4/projects/team%2Factive-repo/repository/files/README.md",
+		map[string]any{"branch": "mr-open-branch", "content": "active-repo\n", "commit_message": "edit readme"})
+
+	var mr struct {
+		IID      int `json:"iid"`
+		DiffRefs struct {
+			BaseSHA  string `json:"base_sha"`
+			StartSHA string `json:"start_sha"`
+			HeadSHA  string `json:"head_sha"`
+		} `json:"diff_refs"`
+	}
+	f.post(t, "/api/v4/projects/team%2Factive-repo/merge_requests", map[string]any{
+		"source_branch": "mr-open-branch", "target_branch": "main",
+		"title": backup.TestPullRequestOpenTitle, "description": "please review this",
+	}, &mr)
+
+	f.post(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d/discussions", mr.IID), map[string]any{
+		"body": backup.TestPullRequestReviewCommentBody,
+		"position": map[string]any{
+			"base_sha": mr.DiffRefs.BaseSHA, "start_sha": mr.DiffRefs.StartSHA, "head_sha": mr.DiffRefs.HeadSHA,
+			"position_type": "text",
+			"new_path":      backup.TestPullRequestReviewCommentFile,
+			"new_line":      backup.TestPullRequestReviewCommentLine,
+		},
+	}, nil)
+}
+
+func (f fixture) seedMergedMergeRequest(t *testing.T) {
+	t.Helper()
+
+	f.post(t, "/api/v4/projects/team%2Factive-repo/repository/branches",
+		map[string]any{"branch": "mr-merge-branch", "ref": "main"}, nil)
+	f.post(t, "/api/v4/projects/team%2Factive-repo/repository/files/merged-file.txt",
+		map[string]any{"branch": "mr-merge-branch", "content": "content\n", "commit_message": "add a file"}, nil)
+
+	var mr struct {
+		IID int `json:"iid"`
+	}
+	f.post(t, "/api/v4/projects/team%2Factive-repo/merge_requests", map[string]any{
+		"source_branch": "mr-merge-branch", "target_branch": "main",
+		"title": backup.TestPullRequestMergedTitle, "description": "already landed",
+	}, &mr)
+
+	f.put(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d/merge", mr.IID), nil)
 }
 
 // post sends an authenticated JSON POST and requires a 2xx response,
