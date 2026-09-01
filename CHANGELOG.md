@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/alrayyes/backup-git-repos/compare/v1.7.0...v1.8.0) (2026-09-01)
+
+
+### Features
+
+* add a Nix flake for packaging ([#108](https://github.com/alrayyes/backup-git-repos/issues/108)) ([9d9ba56](https://github.com/alrayyes/backup-git-repos/commit/9d9ba56be24cf484e1cd59153bfe06fbfbc598e3)), closes [#107](https://github.com/alrayyes/backup-git-repos/issues/107)
+
 ## [1.7.0](https://github.com/alrayyes/backup-git-repos/compare/v1.6.0...v1.7.0) (2026-08-31)
 
 
