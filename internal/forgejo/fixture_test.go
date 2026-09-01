@@ -6,8 +6,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -95,6 +98,7 @@ func (f fixture) seed(t *testing.T) {
 		map[string]any{"tag_name": "v1.0.0", "target": "main"}, nil)
 	f.seedIssues(t)
 	f.seedPullRequest(t)
+	f.seedReleases(t)
 
 	f.post(t, "/api/v1/orgs/team/repos", map[string]any{"name": "archived-repo", "auto_init": true}, nil)
 	f.patch(t, "/api/v1/repos/team/archived-repo", map[string]any{"archived": true})
@@ -133,11 +137,65 @@ func (f fixture) seedPullRequest(t *testing.T) {
 		map[string]any{"title": "a pull request", "head": "pr-branch", "base": "main"}, nil)
 }
 
+// seedReleases creates the two releases backup.TestReleaseExporter expects
+// on team/active-repo: one tagged backup.TestReleaseTagWithAsset carrying
+// one uploaded asset (backup.TestReleaseAssetName /
+// backup.TestReleaseAssetContent), and one tagged
+// backup.TestReleaseTagNoAssets carrying none -- proving both a downloaded
+// asset's content and the "no empty asset files" requirement from the one
+// fixture set.
+func (f fixture) seedReleases(t *testing.T) {
+	t.Helper()
+
+	var withAsset struct {
+		ID int `json:"id"`
+	}
+	f.post(t, "/api/v1/repos/team/active-repo/releases", map[string]any{
+		"tag_name": backup.TestReleaseTagWithAsset, "target_commitish": "main",
+		"name": "v1.0.0", "body": "release notes",
+	}, &withAsset)
+	f.postAsset(t, fmt.Sprintf("/api/v1/repos/team/active-repo/releases/%d/assets", withAsset.ID),
+		backup.TestReleaseAssetName, backup.TestReleaseAssetContent)
+
+	f.post(t, "/api/v1/repos/team/active-repo/releases", map[string]any{
+		"tag_name": backup.TestReleaseTagNoAssets, "target_commitish": "main",
+		"name": "v0.9.0", "body": "no assets here",
+	}, nil)
+}
+
 // post sends an authenticated JSON POST and requires a 2xx response,
 // decoding the body into out when it's non-nil.
 func (f fixture) post(t *testing.T, path string, body, out any) {
 	t.Helper()
 	f.do(t, http.MethodPost, path, body, out)
+}
+
+// postAsset uploads content as a release asset named name via a
+// multipart/form-data POST -- the "attachment" field Forgejo's own release
+// asset upload endpoint expects, since that endpoint takes a file upload
+// rather than a JSON body the way every other seed helper here does.
+func (f fixture) postAsset(t *testing.T, path, name, content string) {
+	t.Helper()
+
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	part, err := w.CreateFormFile("attachment", name)
+	require.NoError(t, err)
+	_, err = part.Write([]byte(content))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost,
+		f.BaseURL+path+"?name="+url.QueryEscape(name), &body)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "token "+f.Token)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Less(t, resp.StatusCode, 300, "POST %s", path)
 }
 
 // patch sends an authenticated JSON PATCH and requires a 2xx response.

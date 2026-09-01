@@ -2,15 +2,11 @@ package forgejo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
-	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
 
 // IssueExporter exports a repository's issues and their comments from a
@@ -100,7 +96,7 @@ func (e *IssueExporter) fetchIssuesPage(ctx context.Context, repoPath string, pa
 	u.RawQuery = q.Encode()
 
 	var items []forgeIssue
-	if err := e.get(ctx, u, &items); err != nil {
+	if err := getJSON(ctx, e.Client, u, &items); err != nil {
 		return nil, fmt.Errorf("list forgejo issues for %s: %w", repoPath, err)
 	}
 
@@ -121,7 +117,7 @@ func (e *IssueExporter) fetchComments(ctx context.Context, repoPath string, numb
 		u.RawQuery = q.Encode()
 
 		var comments []forgeComment
-		if err := e.get(ctx, u, &comments); err != nil {
+		if err := getJSON(ctx, e.Client, u, &comments); err != nil {
 			return nil, fmt.Errorf("list forgejo comments for %s#%d: %w", repoPath, number, err)
 		}
 		all = append(all, comments...)
@@ -130,30 +126,6 @@ func (e *IssueExporter) fetchComments(ctx context.Context, repoPath string, numb
 			return all, nil
 		}
 	}
-}
-
-func (e *IssueExporter) get(ctx context.Context, u *url.URL, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return fmt.Errorf("build request for %s: %w", u, err)
-	}
-	req.Header.Set("Authorization", "token "+e.Client.Token)
-
-	resp, err := e.Client.httpClient().Do(req)
-	if err != nil {
-		return fmt.Errorf("get %s: %w", u, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("get %s: %w: %d", u, httperr.ErrUnexpectedStatus, resp.StatusCode)
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode response from %s: %w", u, err)
-	}
-
-	return nil
 }
 
 func toIssue(it forgeIssue, comments []forgeComment) backup.Issue {

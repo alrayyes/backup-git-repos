@@ -3,6 +3,7 @@
 package gitlab_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -52,6 +53,59 @@ func TestUpdateFixtures(t *testing.T) {
 	}
 
 	updateIssueFixtures(t, f)
+	updateReleaseFixtures(t, f)
+}
+
+// updateReleaseFixtures refreshes testdata/releases_active.json and
+// testdata/release_asset_artifact.txt from a real container's actual API
+// responses. The recorded release's own asset link URL points at the
+// container's own dynamic base URL, which changes every recording session,
+// so it's substituted here for releaseBaseURLPlaceholder --
+// newRecordedReleaseServer (recorded_release_test.go, integration tag
+// only) substitutes it back for whatever httptest server it's replaying
+// against.
+func updateReleaseFixtures(t *testing.T, f fixture) {
+	t.Helper()
+
+	raw := fetchRawProjectSub(t, f, backup.TestActiveRepoPath, "releases")
+
+	var releases []struct {
+		Assets struct {
+			Links []struct {
+				URL string `json:"url"`
+			} `json:"links"`
+		} `json:"assets"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &releases))
+
+	var assetURL string
+	for _, r := range releases {
+		if len(r.Assets.Links) > 0 {
+			assetURL = r.Assets.Links[0].URL
+
+			break
+		}
+	}
+	require.NotEmpty(t, assetURL, "expected at least one recorded release to carry an uploaded asset link")
+
+	// GitLab reports the link against its own configured external_url,
+	// which inside a container is not the host-mapped address this test
+	// process actually reaches it on -- the same problem
+	// ReleaseExporter.resolveAssetURL already solves in the production
+	// code by rebuilding the link against the client's own known-good
+	// base URL, keeping only the path and query. Skipping this here would
+	// fetch whatever (if anything) happens to answer on the container's
+	// self-reported host and port from this machine instead of the
+	// container under test.
+	parsed, err := url.Parse(assetURL)
+	require.NoError(t, err)
+	resolved := f.BaseURL + parsed.Path
+	if parsed.RawQuery != "" {
+		resolved += "?" + parsed.RawQuery
+	}
+
+	writeFixture(t, "release_asset_artifact.txt", fetchRaw(t, f, resolved))
+	writeFixture(t, "releases_active.json", bytes.ReplaceAll(raw, []byte(f.BaseURL), []byte(releaseBaseURLPlaceholder)))
 }
 
 // updateIssueFixtures refreshes issues_active.json and one
