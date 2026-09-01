@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2](https://github.com/alrayyes/backup-git-repos/compare/v1.11.1...v1.11.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* **gitlab:** wait for a merge request's diff before seeding review data ([#129](https://github.com/alrayyes/backup-git-repos/issues/129)) ([77ddd6c](https://github.com/alrayyes/backup-git-repos/commit/77ddd6c9ef52b87417e52a42d0328402d298037e))
+
 ## [1.11.1](https://github.com/alrayyes/backup-git-repos/compare/v1.11.0...v1.11.1) (2026-09-01)
 
 
