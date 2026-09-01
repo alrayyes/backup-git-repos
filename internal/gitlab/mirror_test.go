@@ -80,5 +80,6 @@ func gitOutput(t *testing.T, dir string, args ...string) string {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+
 	return string(out)
 }

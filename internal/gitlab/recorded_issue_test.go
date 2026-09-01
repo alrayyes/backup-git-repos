@@ -34,19 +34,21 @@ func newRecordedIssueServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if strings.HasSuffix(r.URL.Path, "/notes") {
-			withoutSuffix := strings.TrimSuffix(r.URL.Path, "/notes")
+		if withoutSuffix, ok := strings.CutSuffix(r.URL.Path, "/notes"); ok {
 			iid := withoutSuffix[strings.LastIndex(withoutSuffix, "/")+1:]
 			if r.URL.Query().Get("page") != "" && r.URL.Query().Get("page") != "1" {
 				_, _ = w.Write([]byte("[]"))
+
 				return
 			}
 			_, _ = w.Write(notes[iid])
+
 			return
 		}
 
 		if r.URL.Query().Get("page") != "" && r.URL.Query().Get("page") != "1" {
 			_, _ = w.Write([]byte("[]"))
+
 			return
 		}
 		_, _ = w.Write(issues)
@@ -73,6 +75,7 @@ func readIssueNoteFixtures(t *testing.T) map[string][]byte {
 		require.NoError(t, err)
 		notes[iid] = data
 	}
+
 	return notes
 }
 
@@ -85,6 +88,7 @@ func TestRecordedIssueExporterContract(t *testing.T) {
 	backup.TestIssueExporter(t, func(*testing.T) backup.MetadataExporter {
 		client, err := gitlab.New(srv.URL, "unused")
 		require.NoError(t, err)
+
 		return gitlab.NewIssueExporter(client)
 	})
 }
