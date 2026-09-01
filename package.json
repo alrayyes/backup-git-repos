@@ -1,6 +1,6 @@
 {
   "name": "backup-git-repos",
-  "version": "1.11.1",
+  "version": "1.11.2",
   "private": true,
   "description": "Tooling config for backup-git-repos; the tool itself is Go",
   "scripts": {
