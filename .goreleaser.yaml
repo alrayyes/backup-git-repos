@@ -28,6 +28,53 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+# .deb/.rpm for linux amd64/arm64, attached to the GitHub release the same
+# way the .tar.gz archives already are -- no separate repository to host,
+# unlike aurs below, since GitHub Packages doesn't serve either format
+# (rules/releases.md).
+nfpms:
+  - id: backup-git-repos
+    package_name: backup-git-repos
+    homepage: "https://github.com/alrayyes/backup-git-repos"
+    description: >-
+      Backs up every repository on a self-hosted GitLab or Forgejo instance,
+      or a GitHub.com account, to a local, restorable copy.
+    maintainer: "Ryan Kes <ryan@andthensome.nl>"
+    license: "GPL-3.0-only"
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/licenses/backup-git-repos/LICENSE
+
+# Pushes an updated PKGBUILD to a new aur.archlinux.org/backup-git-repos-bin
+# git repo on every release. "-bin" is AUR's own naming convention for a
+# package that installs a prebuilt binary rather than compiling from
+# source, which is exactly what this downloads and installs -- distinct
+# from a hypothetical source-build "backup-git-repos" package this isn't.
+# private_key reads AUR_KEY as the literal key content, not a path -- set
+# from the AUR_SSH_KEY repo secret in release.yml.
+aurs:
+  - name: backup-git-repos-bin
+    homepage: "https://github.com/alrayyes/backup-git-repos"
+    description: >-
+      Backs up every repository on a self-hosted GitLab or Forgejo instance,
+      or a GitHub.com account, to a local, restorable copy.
+    maintainers:
+      - "Ryan Kes <ryan@andthensome.nl>"
+    license: "GPL3"
+    private_key: "{{ .Env.AUR_KEY }}"
+    git_url: "ssh://aur@aur.archlinux.org/backup-git-repos-bin.git"
+    provides:
+      - backup-git-repos
+    conflicts:
+      - backup-git-repos
+    package: |-
+      install -Dm755 ./backup-git-repos "${pkgdir}/usr/bin/backup-git-repos"
+      install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
 # dockers_v2 (buildx-backed) rather than the older dockers/docker_manifests
 # pair: one entry with a platforms list builds and pushes a single
 # multi-arch manifest directly, instead of building a same-arch image per
