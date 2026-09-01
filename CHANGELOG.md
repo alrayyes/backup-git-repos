@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/alrayyes/backup-git-repos/compare/v1.11.0...v1.11.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **gitlab:** clean up golangci-lint findings in container-tagged tests ([#127](https://github.com/alrayyes/backup-git-repos/issues/127)) ([4223976](https://github.com/alrayyes/backup-git-repos/commit/42239764ac2359fa59477851cc905d8803549b41)), closes [#121](https://github.com/alrayyes/backup-git-repos/issues/121)
+
 ## [1.11.0](https://github.com/alrayyes/backup-git-repos/compare/v1.10.0...v1.11.0) (2026-09-01)
 
 
