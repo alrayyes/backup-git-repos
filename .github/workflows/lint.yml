@@ -142,6 +142,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: hadolint Dockerfile
 
+  # hadolint above reads the Dockerfile as text and never builds it, so a
+  # syntactically fine Dockerfile can still fail to build
+  # (rules/containers.md). This proves it still does.
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - run: ./scripts/docker-build-check.sh
+
   commitlint:
     name: Commitlint
     runs-on: ubuntu-latest
