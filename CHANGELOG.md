@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.0](https://github.com/alrayyes/backup-git-repos/compare/v1.9.0...v1.10.0) (2026-09-01)
+
+
+### Features
+
+* **metadata:** export a repository's pull/merge requests and reviews ([#116](https://github.com/alrayyes/backup-git-repos/issues/116)) ([713ed0f](https://github.com/alrayyes/backup-git-repos/commit/713ed0f11594e5e7ab0cf86821bae5e3f18e9b0c)), closes [#82](https://github.com/alrayyes/backup-git-repos/issues/82)
+
+
+### Bug Fixes
+
+* **run:** close a progress-reporting data race ([#117](https://github.com/alrayyes/backup-git-repos/issues/117)) ([7113be4](https://github.com/alrayyes/backup-git-repos/commit/7113be44a41c98e726f3b33c1d3013f2f6b2f2bc))
+
 ## [1.9.0](https://github.com/alrayyes/backup-git-repos/compare/v1.8.0...v1.9.0) (2026-09-01)
 
 
