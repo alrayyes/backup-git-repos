@@ -396,3 +396,69 @@ func findIssueByTitle(t *testing.T, issues []Issue, title string) Issue {
 
 	return Issue{}
 }
+
+// The releases every MetadataReleases exporter's own fixture set is
+// expected to seed on TestActiveRepoPath, on top of what TestLister already
+// requires: a release carrying one uploaded asset, and a release carrying
+// none (source archives only), so TestReleaseExporter can prove both a
+// downloaded asset's content and the "no empty asset files" requirement
+// from the one fixture set.
+const (
+	TestReleaseTagWithAsset = "v1.0.0"
+	TestReleaseTagNoAssets  = "v0.9.0"
+	TestReleaseAssetName    = "artifact.txt"
+	TestReleaseAssetContent = "release asset content"
+)
+
+// TestReleaseExporter runs the specification every MetadataReleases
+// MetadataExporter must satisfy, whether it's backed by a fake or a real
+// forge: newExporter builds the exporter under test, seeded (per the
+// TestReleaseTagWithAsset/TestReleaseTagNoAssets doc comment above) against
+// TestActiveRepoPath the same way every Lister fixture already is.
+func TestReleaseExporter(t *testing.T, newExporter func(t *testing.T) MetadataExporter) {
+	t.Helper()
+
+	t.Run("reports its kind", func(t *testing.T) {
+		exp := newExporter(t)
+		require.Equal(t, MetadataReleases, exp.Kind())
+	})
+
+	t.Run("writes every release's notes and downloads its uploaded assets", func(t *testing.T) {
+		exp := newExporter(t)
+		dir := t.TempDir()
+
+		err := exp.Export(context.Background(), Repo{Path: TestActiveRepoPath}, dir)
+		require.NoError(t, err)
+
+		withAsset := readRelease(t, dir, TestReleaseTagWithAsset)
+		require.Equal(t, TestReleaseTagWithAsset, withAsset.TagName)
+		require.NotEmpty(t, withAsset.Author)
+		require.False(t, withAsset.CreatedAt.IsZero())
+		require.Len(t, withAsset.Assets, 1)
+		require.Equal(t, TestReleaseAssetName, withAsset.Assets[0].Name)
+		require.Equal(t, int64(len(TestReleaseAssetContent)), withAsset.Assets[0].Size)
+
+		content, err := os.ReadFile(filepath.Join(dir, TestReleaseTagWithAsset, "assets", TestReleaseAssetName)) //nolint:gosec // path is built from test constants, not untrusted input
+		require.NoError(t, err)
+		require.Equal(t, TestReleaseAssetContent, string(content))
+
+		noAssets := readRelease(t, dir, TestReleaseTagNoAssets)
+		require.NotNil(t, noAssets.Assets, "a release with no uploaded assets must still be written with an empty list, not skipped")
+		require.Empty(t, noAssets.Assets)
+		require.NoDirExists(t, filepath.Join(dir, TestReleaseTagNoAssets, "assets"))
+	})
+}
+
+// readRelease reads back the release.json WriteRelease wrote for tag under
+// dir.
+func readRelease(t *testing.T, dir, tag string) Release {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.Join(dir, tag, "release.json")) //nolint:gosec // dir is t.TempDir(), tag is a caller-supplied test constant
+	require.NoError(t, err)
+
+	var release Release
+	require.NoError(t, json.Unmarshal(data, &release))
+
+	return release
+}

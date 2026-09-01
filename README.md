@@ -257,8 +257,8 @@ forge stores about a repository -- issues, pull/merge requests, releases,
 CI/CD config -- because none of it lives in the git history. `--export-metadata`
 is opt-in per kind, comma-separated or repeated: `--export-metadata issues`.
 Off by default, and off is exactly today's behaviour -- nothing about a run
-changes unless you ask for a kind by name. `issues` is the only kind this
-release supports; more (pull/merge requests, releases, CI/CD config) are
+changes unless you ask for a kind by name. `issues` and `releases` are the
+kinds this release supports; more (pull/merge requests, CI/CD config) are
 planned as separate, later additions to the same flag, opted into
 individually.
 
@@ -269,6 +269,8 @@ never inside it:
 /srv/backups/git/home/team/repo.git/           # the mirror, as always
 /srv/backups/git/home/team/repo.metadata/issues/1.json
 /srv/backups/git/home/team/repo.metadata/issues/2.json
+/srv/backups/git/home/team/repo.metadata/releases/v1.2.0/release.json
+/srv/backups/git/home/team/repo.metadata/releases/v1.2.0/assets/backup-git-repos_linux_amd64.tar.gz
 ```
 
 One JSON file per issue, named by its number, holding its title, body,
@@ -305,6 +307,39 @@ Forgejo and GitHub, issues and pull requests share one API endpoint; the
 exporter asks for issues only, so a pull request never shows up misfiled as
 one.
 
+`--export-metadata releases` writes each release's notes and every asset
+someone uploaded to it -- never the source-code tarball/zipball a forge
+generates automatically for every tag, since that's already recoverable
+from the mirror itself. A release with no uploaded assets still gets its
+`release.json`, and no `assets/` directory is created for it:
+
+```text
+/srv/backups/git/home/team/repo.metadata/releases/v1.2.0/release.json
+/srv/backups/git/home/team/repo.metadata/releases/v1.2.0/assets/backup-git-repos_linux_amd64.tar.gz
+```
+
+```json
+{
+  "tag_name": "v1.2.0",
+  "name": "v1.2.0",
+  "body": "### Fixed\n\n- ...",
+  "author": "alice",
+  "created_at": "2026-08-15T08:00:00Z",
+  "published_at": "2026-08-15T08:05:00Z",
+  "assets": [{ "name": "backup-git-repos_linux_amd64.tar.gz", "size": 8388608 }]
+}
+```
+
+A release's own tag is what names its directory (with `/` and `\`
+replaced, so a tag like `releases/v1` doesn't add unintended nesting); two
+releases on the same repository never collide on disk. A single asset is
+capped at 4 GiB -- a runaway or interrupted download is removed rather than
+left as a partial file that would read as complete, and the export of that
+one asset fails while the rest of the release still lands. Assets are
+fetched with whatever rate limit the forge's API already enforces; a
+repository with many large releases can take noticeably longer to export
+than one with none.
+
 ### Flags
 
 - `--config, -c`: path to the YAML config (default:
@@ -324,7 +359,7 @@ one.
 - `--export-metadata`: comma-separated or repeated; also export these kinds
   of forge metadata alongside each repository's mirror, under
   `<dest>/<repo>.metadata/<kind>/` (see [Metadata
-  export](#metadata-export)). Currently, just `issues`. Off by default: a
+  export](#metadata-export)). Currently, `issues` and `releases`. Off by default: a
   run's behaviour is unchanged from before this flag existed unless you name
   a kind
 - `--concurrency, -j`: repositories mirrored in parallel (default the number

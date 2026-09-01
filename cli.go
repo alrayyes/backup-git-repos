@@ -146,7 +146,7 @@ func NewRootCommand(version string, newRunner NewRunner, opts ...Option) *cobra.
 	runCmd.Flags().BoolVar(&flags.pruneRemoved, "prune-removed", false,
 		"delete a mirror (and its tar.gz, if archived) once its repository no longer appears in the forge's listing")
 	runCmd.Flags().StringSliceVar(&flags.exportMetadata, "export-metadata", nil,
-		"also export forge metadata for these kinds, comma-separated or repeated (currently just: issues)")
+		"also export forge metadata for these kinds, comma-separated or repeated (currently: issues, releases)")
 
 	listCmd := &cobra.Command{
 		Use:   "list",

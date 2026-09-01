@@ -49,7 +49,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 
 		return backup.Runner{
 			Lister: client, Mirrorer: backup.Mirror{}, Remoter: client,
-			MetadataExporters: []backup.MetadataExporter{forgejo.NewIssueExporter(client)},
+			MetadataExporters: []backup.MetadataExporter{forgejo.NewIssueExporter(client), forgejo.NewReleaseExporter(client)},
 		}, nil
 	case "gitlab":
 		client, err := gitlab.New(fc.URL, fc.Token)
@@ -59,7 +59,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 
 		return backup.Runner{
 			Lister: client, Mirrorer: backup.Mirror{}, Remoter: client,
-			MetadataExporters: []backup.MetadataExporter{gitlab.NewIssueExporter(client)},
+			MetadataExporters: []backup.MetadataExporter{gitlab.NewIssueExporter(client), gitlab.NewReleaseExporter(client)},
 		}, nil
 	case "github":
 		client, err := github.New(fc.URL, fc.Token)
@@ -69,7 +69,7 @@ func newRunner(fc backup.ForgeConfig) (backup.Runner, error) {
 
 		return backup.Runner{
 			Lister: client, Mirrorer: backup.Mirror{}, Remoter: client,
-			MetadataExporters: []backup.MetadataExporter{github.NewIssueExporter(client)},
+			MetadataExporters: []backup.MetadataExporter{github.NewIssueExporter(client), github.NewReleaseExporter(client)},
 		}, nil
 	default:
 		return backup.Runner{}, fmt.Errorf("forge %q: %w", fc.Name, &backup.UnknownKindError{Kind: fc.Kind})

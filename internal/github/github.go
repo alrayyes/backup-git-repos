@@ -206,3 +206,34 @@ func (c *Client) httpClient() *http.Client {
 
 	return http.DefaultClient
 }
+
+// getJSON issues an authenticated GET against u and JSON-decodes a 200
+// response into out. Shared by IssueExporter and ReleaseExporter, which
+// otherwise each duplicate this exact request/decode shape with nothing
+// specific to either kind beyond the headers every authenticated call to
+// this client's API already sets.
+func getJSON(ctx context.Context, c *Client, u *url.URL, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return fmt.Errorf("build request for %s: %w", u, err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.Token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", apiVersion)
+
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return fmt.Errorf("get %s: %w", u, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("get %s: %w: %d", u, httperr.ErrUnexpectedStatus, resp.StatusCode)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decode response from %s: %w", u, err)
+	}
+
+	return nil
+}

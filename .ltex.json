@@ -40,6 +40,8 @@
       "subgroups",
       "tarball",
       "tarballs",
+      "zipball",
+      "GiB",
       "gzipped",
       "filesystem",
       "writable",

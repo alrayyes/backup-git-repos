@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"testing"
 
@@ -100,6 +101,7 @@ func (f *fixture) seed(t *testing.T) {
 	f.post(t, "/api/v4/projects/team%2Factive-repo/wikis",
 		map[string]any{"title": "Home", "content": "hello wiki"}, nil)
 	f.seedIssues(t)
+	f.seedReleases(t)
 
 	var snippet struct {
 		ID int `json:"id"`
@@ -145,11 +147,78 @@ func (f fixture) seedIssues(t *testing.T) {
 		map[string]any{"state_event": "close"})
 }
 
+// seedReleases creates the two releases backup.TestReleaseExporter expects
+// on team/active-repo: one tagged backup.TestReleaseTagWithAsset carrying
+// one uploaded asset (backup.TestReleaseAssetName /
+// backup.TestReleaseAssetContent), and one tagged
+// backup.TestReleaseTagNoAssets carrying none -- proving both a downloaded
+// asset's content and the "no empty asset files" requirement from the one
+// fixture set. An "uploaded asset" on GitLab means uploading the file to
+// the project first (POST .../uploads, the same endpoint markdown image
+// attachments use), then creating the release with an assets.links entry
+// pointing at that upload's own URL -- unlike Forgejo's release-asset
+// endpoint, GitLab's release API takes only links, never a file directly.
+func (f fixture) seedReleases(t *testing.T) {
+	t.Helper()
+
+	assetURL := f.postUpload(t, "/api/v4/projects/team%2Factive-repo/uploads",
+		backup.TestReleaseAssetName, backup.TestReleaseAssetContent)
+
+	f.post(t, "/api/v4/projects/team%2Factive-repo/releases", map[string]any{
+		"tag_name": backup.TestReleaseTagWithAsset, "ref": "main",
+		"name": "v1.0.0", "description": "release notes",
+		"assets": map[string]any{
+			"links": []map[string]any{{"name": backup.TestReleaseAssetName, "url": assetURL}},
+		},
+	}, nil)
+
+	f.post(t, "/api/v4/projects/team%2Factive-repo/releases", map[string]any{
+		"tag_name": backup.TestReleaseTagNoAssets, "ref": "main",
+		"name": "v0.9.0", "description": "no assets here",
+	}, nil)
+}
+
 // post sends an authenticated JSON POST and requires a 2xx response,
 // decoding the body into out when it's non-nil.
 func (f fixture) post(t *testing.T, path string, body, out any) {
 	t.Helper()
 	f.do(t, http.MethodPost, path, body, out)
+}
+
+// postUpload uploads content as name via GitLab's project uploads endpoint
+// (a multipart/form-data POST, the "file" field it expects) and returns the
+// absolute URL the release's own assets.links entry should point at --
+// full_path is project-relative ("/team/active-repo/uploads/<hash>/name"),
+// so it's joined against f.BaseURL here rather than left for the caller to
+// resolve.
+func (f fixture) postUpload(t *testing.T, path, name, content string) string {
+	t.Helper()
+
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	part, err := w.CreateFormFile("file", name)
+	require.NoError(t, err)
+	_, err = part.Write([]byte(content))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, f.BaseURL+path, &body)
+	require.NoError(t, err)
+	req.Header.Set("PRIVATE-TOKEN", f.Token)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Less(t, resp.StatusCode, 300, "POST %s", path)
+
+	var uploaded struct {
+		FullPath string `json:"full_path"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&uploaded))
+
+	return f.BaseURL + uploaded.FullPath
 }
 
 // put sends an authenticated JSON PUT and requires a 2xx response.
