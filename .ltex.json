@@ -53,7 +53,8 @@
       "stdout",
       "stderr",
       "hadolint",
-      "govulncheck"
+      "govulncheck",
+      "toolchain"
     ]
   },
   "ltex.disabledRules": {
