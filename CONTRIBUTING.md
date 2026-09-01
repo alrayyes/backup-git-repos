@@ -62,7 +62,7 @@ push.
   full mirror-and-refresh path against it. The GitLab and GitHub halves of
   this lane are served from recorded API fixtures in `testdata/`, not a live
   GitLab or GitHub.com. CI runs this on every pull request.
-- `go test -tags='integration gitlab' -run GitLab ./...` — boots a real
+- `go test -tags='integration gitlab' ./internal/gitlab/...` — boots a real
   GitLab CE container, which wants several minutes and several gigabytes. CI
   runs this nightly and on `workflow_dispatch`, never on a pull request.
 
@@ -71,6 +71,16 @@ GitHub.com has no self-hosted equivalent to boot, so its recorded fixtures in
 documentation rather than captured from a live instance the way GitLab's
 `-update` flag does. Keep them in sync by hand if that API's response shape
 changes.
+
+That gap includes Git LFS. `Mirror.syncLFS` is proven end-to-end against a
+real, non-mocked container for both Forgejo and GitLab -- `git lfs fsck`
+against the resulting mirror reports no missing objects, for a fresh clone
+and for an incremental update alike. `internal/github`'s `Remote()` already
+authenticates as HTTP Basic, the form GitLab and Forgejo both need for LFS
+too, so there's reason to expect it already works against GitHub.com -- but
+nobody has actually mirrored an LFS-tracked GitHub repository and checked.
+Treat GitHub's LFS support as expected to work, not verified against a live
+server, until something changes that.
 
 The contract suite lives once, in `testing.go`, and runs against the fake,
 the Forgejo adapter, the GitLab adapter, and the GitHub adapter alike — the

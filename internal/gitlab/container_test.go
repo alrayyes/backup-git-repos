@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -34,31 +35,45 @@ const image = "gitlab/gitlab-ce:19.2.2-ce.0@sha256:f7cf5de6f453623cfda9b7cc3708b
 // removed from the Linux package in 19.0, and setting either aborts
 // reconfigure outright.
 //
-// external_url carries no port. Setting it to the host-mapped port (as a
-// first attempt at this harness did) makes nginx listen on that port
-// *inside* the container instead of 80, which is where
-// testcontainers.WithExposedPorts and the docker -p mapping both expect it.
-// Leaving the port off is what makes the two agree.
-const omnibusConfig = "external_url 'http://localhost'; " +
-	"gitlab_rails['initial_root_password'] = 'Bk7v#Qz9$mN2xLp5'; " +
-	"gitlab_rails['monitoring_whitelist'] = ['0.0.0.0/0']; " +
-	"puma['worker_processes'] = 0; " +
-	"sidekiq['max_concurrency'] = 4; " +
-	"prometheus_monitoring['enable'] = false; " +
-	"alertmanager['enable'] = false; " +
-	"gitlab_kas['enable'] = false; " +
-	"registry['enable'] = false; " +
-	"gitlab_pages['enable'] = false; " +
-	"node_exporter['enable'] = false; " +
-	"redis_exporter['enable'] = false; " +
-	"postgres_exporter['enable'] = false; " +
-	"gitlab_exporter['enable'] = false; " +
-	"logrotate['enable'] = false; " +
-	"mailroom['enable'] = false; " +
-	"gitlab_rails['smtp_enable'] = false; " +
-	"gitlab_rails['gitlab_email_enabled'] = false; " +
-	"gitlab_rails['usage_ping_enabled'] = false; " +
-	"gitlab_rails['gravatar_enabled'] = false;"
+// external_url carries no port for every test except the LFS ones in
+// mirror_lfs_test.go, which pin one to make the LFS batch API's
+// self-reported href match the address the fixture and the mirror under
+// test actually connect to. Baking that port straight into external_url
+// isn't enough on its own, though -- confirmed live, by exactly the
+// failure this comment now heads off: omnibus derives nginx's own listen
+// port from external_url's port when one is present, so nginx ends up
+// listening *inside* the container on that port instead of 80, which is
+// where testcontainers.WithExposedPorts and the docker -p mapping both
+// expect it, and the container never becomes reachable at all.
+// nginx['listen_port'] is the decoupling omnibus offers for exactly this:
+// it fixes nginx's actual listen port at 80 regardless of what
+// external_url says, while external_url's port still flows into every
+// href GitLab generates server-side, LFS's batch API included. Harmless
+// for the no-port default case too, since nginx already listens on 80
+// there.
+func omnibusConfig(externalURL string) string {
+	return "external_url '" + externalURL + "'; " +
+		"nginx['listen_port'] = 80; " +
+		"gitlab_rails['initial_root_password'] = 'Bk7v#Qz9$mN2xLp5'; " +
+		"gitlab_rails['monitoring_whitelist'] = ['0.0.0.0/0']; " +
+		"puma['worker_processes'] = 0; " +
+		"sidekiq['max_concurrency'] = 4; " +
+		"prometheus_monitoring['enable'] = false; " +
+		"alertmanager['enable'] = false; " +
+		"gitlab_kas['enable'] = false; " +
+		"registry['enable'] = false; " +
+		"gitlab_pages['enable'] = false; " +
+		"node_exporter['enable'] = false; " +
+		"redis_exporter['enable'] = false; " +
+		"postgres_exporter['enable'] = false; " +
+		"gitlab_exporter['enable'] = false; " +
+		"logrotate['enable'] = false; " +
+		"mailroom['enable'] = false; " +
+		"gitlab_rails['smtp_enable'] = false; " +
+		"gitlab_rails['gitlab_email_enabled'] = false; " +
+		"gitlab_rails['usage_ping_enabled'] = false; " +
+		"gitlab_rails['gravatar_enabled'] = false;"
+}
 
 func TestContainerBoots(t *testing.T) {
 	ctx := context.Background()
@@ -85,13 +100,31 @@ func TestContainerBoots(t *testing.T) {
 func runGitLab(ctx context.Context, t *testing.T) testcontainers.Container {
 	t.Helper()
 
+	return runGitLabConfigured(ctx, t, "http://localhost", "")
+}
+
+// runGitLabConfigured is runGitLab's own implementation, and startWithLFS's
+// in mirror_lfs_test.go: externalURL is GitLab's own view of its address,
+// and fixedHostPort, when non-empty, pins the container's published host
+// port to a value chosen before the container exists rather than one
+// Docker assigns at random -- what startWithLFS needs to keep externalURL
+// and the address the fixture and the mirror under test actually connect
+// to in agreement.
+func runGitLabConfigured(ctx context.Context, t *testing.T, externalURL, fixedHostPort string) testcontainers.Container {
+	t.Helper()
+
 	ctr, err := testcontainers.Run(ctx, image,
 		testcontainers.WithExposedPorts("80/tcp"),
 		testcontainers.WithEnv(map[string]string{
-			"GITLAB_OMNIBUS_CONFIG": omnibusConfig,
+			"GITLAB_OMNIBUS_CONFIG": omnibusConfig(externalURL),
 		}),
 		testcontainers.WithHostConfigModifier(func(hc *container.HostConfig) {
 			hc.ShmSize = gitlabShmSize
+			if fixedHostPort != "" {
+				hc.PortBindings = network.PortMap{
+					network.MustParsePort("80/tcp"): {{HostPort: fixedHostPort}},
+				}
+			}
 		}),
 		// The image's own HEALTHCHECK reports healthy long before Rails
 		// actually is -- confirmed against a live container, where nginx
