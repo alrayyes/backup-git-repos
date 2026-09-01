@@ -144,3 +144,21 @@ func TestCLIRunSkipsConfigInitPromptWithoutInteractive(t *testing.T) {
 	require.ErrorContains(t, err, "--config is required")
 	require.NoFileExists(t, filepath.Join(xdg, "backup-git-repos", "config.yaml"))
 }
+
+// TestCLIRunMissingConfigErrorMentionsInit proves the non-interactive "no
+// config file" error names the way out, not just the problem -- a run
+// piped or scheduled with no TTY (a systemd timer, say) never sees the
+// interactive prompt above, so the error message is the only place left
+// to point it at `config init`.
+func TestCLIRunMissingConfigErrorMentionsInit(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
+
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"run", "--dest", "/tmp/dest"})
+
+	err := root.Execute()
+
+	require.ErrorContains(t, err, "config init")
+}
