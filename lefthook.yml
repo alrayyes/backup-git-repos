@@ -7,16 +7,12 @@ pre-commit:
   jobs:
     # `golangci-lint fmt` is the fixer in v2 -- gofumpt and goimports stopped
     # being linters and moved to the formatters block, so `run` is the check and
-    # this is the write. CI installs a pinned golangci-lint and is the gate that
-    # cannot be skipped; locally it is skipped when the binary is missing.
+    # this is the write. Runs through the pinned golangci-lint image
+    # (rules/go-lint.md) so the version a hook runs with matches CI's exactly,
+    # rather than whatever happens to be on PATH.
     - name: golangci-lint-fmt
       glob: "*.go"
-      run: |
-        if command -v golangci-lint >/dev/null 2>&1; then
-          golangci-lint fmt {staged_files}
-        else
-          echo "golangci-lint not installed, skipping (CI will still check)."
-        fi
+      run: bun run golangci-lint -- fmt {staged_files}
       stage_fixed: true
 
     # JSON and JSONC only. Go belongs to golangci-lint and Biome has no business
@@ -78,6 +74,17 @@ pre-commit:
       glob: "Dockerfile"
       run: bun run lint:dockerfile
 
+    # hadolint reads the Dockerfile as text and never builds it, so a
+    # syntactically fine Dockerfile can still fail to build
+    # (rules/containers.md). Scoped to the Dockerfile plus whatever its
+    # COPY instruction actually needs -- go.mod/go.sum for module
+    # resolution and every *.go file, since scripts/docker-build-check.sh
+    # cross-compiles the binary it stages, the same way goreleaser does
+    # for the real image.
+    - name: docker-build
+      glob: "{Dockerfile,**/*.go,go.mod,go.sum}"
+      run: bun run build:docker
+
     # Keeps package.json itself canonical the way Prettier does for
     # everything else -- see rules/javascript.md.
     - name: sort-package-json
@@ -105,15 +112,10 @@ pre-push:
   parallel: true
   jobs:
     - name: golangci-lint
-      run: |
-        if command -v golangci-lint >/dev/null 2>&1; then
-          golangci-lint run
-        else
-          echo "golangci-lint not installed, skipping (CI will still check)."
-        fi
+      run: bun run golangci-lint -- run
 
     - name: go-test
-      run: go test -race ./...
+      run: bun run go -- test -race ./...
 
     - name: biome
       run: ./node_modules/.bin/biome check
@@ -136,14 +138,19 @@ pre-push:
     - name: hadolint
       run: bun run lint:dockerfile
 
+    - name: docker-build
+      run: bun run build:docker
+
     - name: sort-package-json
       run: ./node_modules/.bin/sort-package-json --check package.json
 
     # go.mod's own canonicalizer -- gofmt never touches it. No built-in
-    # check-only flag, so diff against what -fmt would produce.
+    # check-only flag, so diff against what -fmt would produce. The edit
+    # itself runs in the pinned image (rules/go.md); the diff check stays on
+    # the host, since git isn't in that image and doesn't need to be.
     - name: go-mod-fmt
       run: |
-        go mod edit -fmt go.mod
+        bun run go -- mod edit -fmt go.mod
         git diff --exit-code go.mod
 
     # Broader than -mod=readonly's missing-require check: a stale require
@@ -152,4 +159,4 @@ pre-push:
     # missing from a warm module cache -- heavier than pure formatting,
     # which is why it's here and not pre-commit.
     - name: go-mod-tidy
-      run: go mod tidy -diff
+      run: bun run go -- mod tidy -diff

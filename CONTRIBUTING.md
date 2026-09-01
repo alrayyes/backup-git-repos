@@ -11,14 +11,18 @@ recorded below.
 
 Running the tool needs Go and `git` on `PATH`. Working on it needs:
 
-- **Go 1.26** or newer, and **golangci-lint 2.x** — the linter and the fixer
-  both.
+- **Go 1.26** or newer, to build and run the tool directly on this machine.
 - **[bun](https://bun.sh)** for the Node-shaped tooling: commitlint, Biome,
   Prettier, markdownlint-cli2 and lefthook. Not npm. The lockfile is
   `bun.lock`.
-- **Docker**, for the integration test suites (`go test ./...` never
-  touches it; `-tags=integration` does) and for linting `Dockerfile` with
-  hadolint, which runs from its own image rather than a local installation.
+- **Docker**, for every Go-related hook (`go-mod-fmt`, `go-mod-tidy`,
+  `go-test`, `golangci-lint-fmt`/`golangci-lint`), the integration test
+  suites (`go test ./...` never touches it; `-tags=integration` does), the
+  `docker-build` check, and linting `Dockerfile` with hadolint. None of
+  these run against a locally installed `golangci-lint` any more — they
+  all run through the pinned images `rules/go.md`/`rules/go-lint.md`
+  specify, so the toolchain version a hook runs with is never a question
+  this machine's package manager gets a vote on.
 - **[Vale](https://vale.sh)**, optional. The hooks skip it when it isn't on
   your `PATH`, and CI runs it either way.
 - **[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)**,
@@ -27,7 +31,9 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
 ## Getting set up
 
 ```bash
-# Install the Go tooling
+# Install the Go tooling. golangci-lint here is only for editor
+# integration and ad hoc runs -- the hooks and CI both use the pinned
+# Docker image instead, never this one.
 go install golang.org/x/tools/cmd/goimports@latest
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
@@ -39,9 +45,9 @@ bun install
 # Run the fast suite
 go test ./...
 
-# Run and fix by hand
-golangci-lint run
-golangci-lint fmt
+# Run and fix by hand, through the same pinned image the hooks use
+bun run golangci-lint -- run
+bun run golangci-lint -- fmt
 
 # Check for known vulnerabilities in dependencies
 govulncheck ./...
@@ -104,14 +110,18 @@ install` puts them in place and everyone gets the same version:
   `prettier --write` then `markdownlint-cli2 --fix` on Markdown, `prettier
 --write` on YAML, `biome check --write` on JSON. `Dockerfile` gets
   [hadolint](https://github.com/hadolint/hadolint) instead, which has no
-  fixer, so it checks and fails rather than rewriting anything. It needs
+  fixer, so it checks and fails rather than rewriting anything, plus a
+  real `docker build` proving it still builds (hadolint only reads it as
+  text). `golangci-lint fmt` and the `docker-build` check both need
   Docker, same as the integration suites below.
 - **commit-msg**: validates commit messages with
   [commitlint](https://commitlint.js.org/) against [Conventional
   Commits](https://www.conventionalcommits.org/).
-- **pre-push**: runs `golangci-lint run`, `go test -race ./...`, then
-  re-checks every preceding linter across the whole repository, so nothing
-  reaches the remote that CI would reject.
+- **pre-push**: runs `golangci-lint run`, `go test -race ./...`,
+  `go mod tidy -diff`, `go mod edit -fmt` (all through the pinned Docker
+  images `scripts/docker-go.sh`/`scripts/docker-golangci-lint.sh` wrap),
+  then re-checks every preceding linter across the whole repository, so
+  nothing reaches the remote that CI would reject.
 
 The container suites are the deliberate omission from `pre-push`. A Forgejo
 boot is more than a push should wait on, and CI runs it on every pull request
