@@ -222,8 +222,15 @@ func (r Runner) listRepos(ctx context.Context, state State) (repos, canonical []
 // runCounters tallies what Run's concurrent workers did, and reports
 // progress as each one finishes. Every field is safe for concurrent use,
 // so a worker goroutine never needs its own locking beyond what's already
-// here -- progressMu only serializes the calls into opts.Progress itself,
-// which Run's own doc comment promises are serialized for the caller.
+// here -- progressMu serializes both incrementing done and the call into
+// opts.Progress, which Run's own doc comment promises are serialized for
+// the caller. Incrementing and reporting have to share one critical
+// section: done is still an atomic.Int64 so its other readers (the final
+// summary) need no lock of their own, but if reportDone incremented it
+// outside progressMu, two goroutines could reach the lock in an order
+// different from the one they incremented in, and the caller could see a
+// done that goes backwards or a final call that doesn't report done ==
+// total.
 type runCounters struct {
 	synced, skipped, failed, archived, metadataExported, done atomic.Int64
 	total                                                     int
@@ -232,13 +239,13 @@ type runCounters struct {
 }
 
 func (c *runCounters) reportDone() {
-	n := int(c.done.Add(1))
-	if c.progress == nil {
-		return
-	}
 	c.progressMu.Lock()
 	defer c.progressMu.Unlock()
-	c.progress(n, c.total)
+
+	n := int(c.done.Add(1))
+	if c.progress != nil {
+		c.progress(n, c.total)
+	}
 }
 
 // runRepo mirrors one repository and folds its outcome into c. It's the
