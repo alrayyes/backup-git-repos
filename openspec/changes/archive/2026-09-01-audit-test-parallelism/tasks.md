@@ -20,4 +20,4 @@
 
 ## Full-suite verification
 
-- [ ] 5.1 Run `go test ./...` and `go test -tags=integration -race ./...` (plus the `gitlab`-tagged lane) end to end and confirm both pass with no new flakiness, then run each suite a second time back to back to catch a race that only shows up intermittently
+- [x] 5.1 Run `go test ./...` and `go test -tags=integration -race ./...` (plus the `gitlab`-tagged lane) end to end and confirm both pass with no new flakiness, then run each suite a second time back to back to catch a race that only shows up intermittently. The first two pass clean, run twice each. The `gitlab`-tagged lane confirms the container-booting tests now run strictly serially (non-overlapping container lifecycle timestamps) but can't finish a full pass -- blocked by #123, a pre-existing, unrelated fixture bug tracked separately
