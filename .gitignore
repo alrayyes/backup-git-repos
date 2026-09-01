@@ -17,3 +17,7 @@ styles/proselint/
 # Local runs
 /config.yaml
 /backups/
+
+# Claude Code's own working state -- worktrees, installed skills, session
+# cache. Not repo content.
+/.claude/
