@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/alrayyes/backup-git-repos/compare/v1.11.2...v1.12.0) (2026-09-01)
+
+
+### Features
+
+* **release:** publish to the AUR, and .deb/.rpm on every release ([#133](https://github.com/alrayyes/backup-git-repos/issues/133)) ([cf84d79](https://github.com/alrayyes/backup-git-repos/commit/cf84d79d4f3accb450fb97a0d6a52bdfae3893fa)), closes [#131](https://github.com/alrayyes/backup-git-repos/issues/131)
+
 ## [1.11.2](https://github.com/alrayyes/backup-git-repos/compare/v1.11.1...v1.11.2) (2026-09-01)
 
 
