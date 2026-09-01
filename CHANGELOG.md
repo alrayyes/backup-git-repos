@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/alrayyes/backup-git-repos/compare/v1.8.0...v1.9.0) (2026-09-01)
+
+
+### Features
+
+* **metadata:** export a repository's releases and their assets ([#113](https://github.com/alrayyes/backup-git-repos/issues/113)) ([38e6f5a](https://github.com/alrayyes/backup-git-repos/commit/38e6f5a0dbb2e5288419e9666ab11f554bef65e0)), closes [#83](https://github.com/alrayyes/backup-git-repos/issues/83)
+
 ## [1.8.0](https://github.com/alrayyes/backup-git-repos/compare/v1.7.0...v1.8.0) (2026-09-01)
 
 
