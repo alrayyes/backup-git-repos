@@ -66,3 +66,6 @@ backfill(s|ed|ing)?
 parameterizing
 CE('s)?
 rollout
+CI('s)?
+async
+mergeability
