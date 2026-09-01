@@ -69,3 +69,7 @@ rollout
 CI('s)?
 async
 mergeability
+AUR('s)?
+makepkg
+PKGBUILD
+NixOS

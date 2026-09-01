@@ -69,6 +69,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUR_KEY: ${{ secrets.AUR_SSH_KEY }}
 
       # SLSA Build L2 provenance for the released binaries, tied to this
       # workflow run -- rules/releases.md says adopt this unconditionally,
