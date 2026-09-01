@@ -11,6 +11,8 @@ import (
 )
 
 func TestReleaseExporterContract(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 	client, err := forgejo.New(f.BaseURL, f.Token)
 	require.NoError(t, err)

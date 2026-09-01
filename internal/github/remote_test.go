@@ -9,16 +9,20 @@ import (
 )
 
 func TestRemote(t *testing.T) {
+	t.Parallel()
+
 	client, err := github.New("", "gh-token")
 	require.NoError(t, err)
 
 	remote := client.Remote(backup.Repo{Path: "team/active-repo"})
 
 	t.Run("clones from github.com, not the api base", func(t *testing.T) {
+		t.Parallel()
 		require.Equal(t, "https://github.com/team/active-repo.git", remote.CloneURL)
 	})
 
 	t.Run("carries the token as the basic auth username", func(t *testing.T) {
+		t.Parallel()
 		require.Equal(t, "Basic Z2gtdG9rZW46", remote.AuthHeader)
 	})
 }

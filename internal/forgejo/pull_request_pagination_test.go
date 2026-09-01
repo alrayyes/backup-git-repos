@@ -92,6 +92,8 @@ func writePullsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestPullRequestExporterPaginatesReviews(t *testing.T) {
+	t.Parallel()
+
 	srv := pullRequestPaginationServer(t)
 	defer srv.Close()
 

@@ -46,6 +46,8 @@ func (fakeIssueExporter) Export(_ context.Context, repo backup.Repo, dir string)
 }
 
 func TestFakeIssueExporter(t *testing.T) {
+	t.Parallel()
+
 	backup.TestIssueExporter(t, func(*testing.T) backup.MetadataExporter {
 		return fakeIssueExporter{}
 	})
@@ -92,6 +94,8 @@ func (fakeReleaseExporter) Export(_ context.Context, repo backup.Repo, dir strin
 }
 
 func TestFakeReleaseExporter(t *testing.T) {
+	t.Parallel()
+
 	backup.TestReleaseExporter(t, func(*testing.T) backup.MetadataExporter {
 		return fakeReleaseExporter{}
 	})
@@ -137,6 +141,8 @@ func (fakePullRequestExporter) Export(_ context.Context, repo backup.Repo, dir s
 }
 
 func TestFakePullRequestExporter(t *testing.T) {
+	t.Parallel()
+
 	backup.TestPullRequestExporter(t, func(*testing.T) backup.MetadataExporter {
 		return fakePullRequestExporter{}
 	})

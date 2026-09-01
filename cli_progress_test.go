@@ -10,7 +10,7 @@ import (
 
 func TestCLIRunVerbosePrintsDebugLines(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_VERBOSE_TOKEN\n")
-	t.Setenv("TEST_VERBOSE_TOKEN", "secret")
+	t.Setenv("TEST_VERBOSE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{}}, nil
@@ -28,7 +28,7 @@ func TestCLIRunVerbosePrintsDebugLines(t *testing.T) {
 
 func TestCLIRunWithoutVerboseOmitsDebugLines(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_VERBOSE_TOKEN\n")
-	t.Setenv("TEST_VERBOSE_TOKEN", "secret")
+	t.Setenv("TEST_VERBOSE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{}}, nil
@@ -46,7 +46,7 @@ func TestCLIRunWithoutVerboseOmitsDebugLines(t *testing.T) {
 
 func TestCLIRunWritesNoProgressBarWhenNotATerminal(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_VERBOSE_TOKEN\n")
-	t.Setenv("TEST_VERBOSE_TOKEN", "secret")
+	t.Setenv("TEST_VERBOSE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{}}, nil

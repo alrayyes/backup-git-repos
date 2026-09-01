@@ -82,6 +82,8 @@ func writeMergeRequestsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestPullRequestExporterUnit(t *testing.T) {
+	t.Parallel()
+
 	srv := mergeRequestUnitServer(t)
 	defer srv.Close()
 

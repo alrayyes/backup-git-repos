@@ -64,6 +64,8 @@ func releaseServer(t *testing.T) *httptest.Server {
 }
 
 func TestReleaseExporterUnit(t *testing.T) {
+	t.Parallel()
+
 	srv := releaseServer(t)
 	defer srv.Close()
 

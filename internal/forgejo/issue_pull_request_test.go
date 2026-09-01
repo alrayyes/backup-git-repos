@@ -21,6 +21,8 @@ import (
 // or its query param misspelled -- shows up as an extra, wrongly-shaped
 // "issue" in the exported set rather than passing unnoticed.
 func TestIssueExporterExcludesPullRequests(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 	client, err := forgejo.New(f.BaseURL, f.Token)
 	require.NoError(t, err)

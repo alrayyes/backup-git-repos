@@ -35,6 +35,8 @@ func neverNewRunner(t *testing.T) backup.NewRunner {
 }
 
 func TestCLIHelpListsCommands(t *testing.T) {
+	t.Parallel()
+
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	var out bytes.Buffer
 	root.SetOut(&out)
@@ -48,7 +50,7 @@ func TestCLIHelpListsCommands(t *testing.T) {
 
 func TestCLIRunFallsBackToDefaultConfigPath(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 
 	dir := filepath.Join(xdg, "backup-git-repos")
 	require.NoError(t, os.MkdirAll(dir, 0o755))
@@ -62,7 +64,7 @@ func TestCLIRunFallsBackToDefaultConfigPath(t *testing.T) {
 }
 
 func TestCLIRunErrorsWhenNoConfigFlagAndNoDefaultFile(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // serial: t.Setenv panics under t.Parallel()
 
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
@@ -76,7 +78,7 @@ func TestCLIRunErrorsWhenNoConfigFlagAndNoDefaultFile(t *testing.T) {
 
 func TestCLIRunPrefersExplicitConfigOverDefaultPath(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 	require.NoError(t, os.MkdirAll(filepath.Join(xdg, "backup-git-repos"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(xdg, "backup-git-repos", "config.yaml"), []byte("dest: /wrong\nforges: []\n"), 0o644))
 
@@ -113,7 +115,7 @@ func newDryRunRunner(t *testing.T) backup.NewRunner {
 
 func TestCLIRunDryRunReportsCloneForNewRepos(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
-	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 
 	var out bytes.Buffer
@@ -130,7 +132,7 @@ func TestCLIRunDryRunReportsCloneForNewRepos(t *testing.T) {
 
 func TestCLIRunDryRunReportsUpdateForExistingMirror(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
-	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 
 	mirrorDir := filepath.Join(dest, "home", backup.TestActiveRepoPath+".git")
@@ -149,7 +151,7 @@ func TestCLIRunDryRunReportsUpdateForExistingMirror(t *testing.T) {
 
 func TestCLIRunDryRunFlagsArchiveSelectionWithoutWriting(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
-	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 	archiveDir := t.TempDir()
 
@@ -169,7 +171,7 @@ func TestCLIRunDryRunFlagsArchiveSelectionWithoutWriting(t *testing.T) {
 
 func TestCLIRunDryRunPrintsPreviewSummary(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYRUN_TOKEN\n")
-	t.Setenv("TEST_DRYRUN_TOKEN", "secret")
+	t.Setenv("TEST_DRYRUN_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 
 	var out bytes.Buffer
@@ -196,7 +198,7 @@ func (l *logSettingLister) SetLogger(log *slog.Logger) { l.got = log }
 
 func TestCLIRunSetsLoggerOnListerThatWantsOne(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_LOGSETTER_TOKEN\n")
-	t.Setenv("TEST_LOGSETTER_TOKEN", "secret")
+	t.Setenv("TEST_LOGSETTER_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 
 	lister := &logSettingLister{fakeLister: newFakeLister()}
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
@@ -213,6 +215,8 @@ func TestCLIRunSetsLoggerOnListerThatWantsOne(t *testing.T) {
 }
 
 func TestCLIRunRequiresDest(t *testing.T) {
+	t.Parallel()
+
 	path := writeConfig(t, configWithNoDest)
 
 	root := backup.NewRootCommand("test", neverNewRunner(t))
@@ -225,6 +229,8 @@ func TestCLIRunRequiresDest(t *testing.T) {
 }
 
 func TestCLIRunRejectsUnknownState(t *testing.T) {
+	t.Parallel()
+
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
 	root.SetArgs([]string{"run", "--config", "config.yaml", "--dest", "/tmp/dest", "--state", "bogus"})
@@ -235,6 +241,8 @@ func TestCLIRunRejectsUnknownState(t *testing.T) {
 }
 
 func TestCLIRunRejectsUnknownArchive(t *testing.T) {
+	t.Parallel()
+
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
 	root.SetArgs([]string{"run", "--config", "config.yaml", "--dest", "/tmp/dest", "--archive", "bogus"})
@@ -245,6 +253,8 @@ func TestCLIRunRejectsUnknownArchive(t *testing.T) {
 }
 
 func TestCLIRunRejectsUnknownMetadataKind(t *testing.T) {
+	t.Parallel()
+
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
 	root.SetArgs([]string{"run", "--config", "config.yaml", "--dest", "/tmp/dest", "--export-metadata", "bogus"})
@@ -285,6 +295,8 @@ func (e recordingIssueExporter) Export(_ context.Context, repo backup.Repo, dir 
 // export disabled leaves a run's behavior unchanged from before this flag
 // existed.
 func TestCLIRunLeavesMetadataUnexportedByDefault(t *testing.T) {
+	t.Parallel()
+
 	exp := newRecordingIssueExporter()
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{
@@ -310,6 +322,8 @@ func TestCLIRunLeavesMetadataUnexportedByDefault(t *testing.T) {
 // TestCLIRunExportsMetadataWhenFlagSet is the same run with
 // --export-metadata issues set, proving the flag actually reaches Options.
 func TestCLIRunExportsMetadataWhenFlagSet(t *testing.T) {
+	t.Parallel()
+
 	exp := newRecordingIssueExporter()
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
 		return backup.Runner{
@@ -365,8 +379,8 @@ func newRunnerCapturingDirs(dirs *[]string) backup.NewRunner {
 
 func TestCLIRunExpandsTildeInDestFlag(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("TEST_TILDE_TOKEN", "secret")
+	t.Setenv("HOME", home)                 // serial: t.Setenv panics under t.Parallel()
+	t.Setenv("TEST_TILDE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_TILDE_TOKEN\n")
 
 	var dirs []string
@@ -384,8 +398,8 @@ func TestCLIRunExpandsTildeInDestFlag(t *testing.T) {
 
 func TestCLIRunExpandsTildeInDestFromConfig(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("TEST_TILDE_TOKEN", "secret")
+	t.Setenv("HOME", home)                 // serial: t.Setenv panics under t.Parallel()
+	t.Setenv("TEST_TILDE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	cfgPath := writeConfig(t, "dest: ~/backups\nforges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_TILDE_TOKEN\n")
 
 	var dirs []string
@@ -403,8 +417,8 @@ func TestCLIRunExpandsTildeInDestFromConfig(t *testing.T) {
 
 func TestCLIRunExpandsTildeInArchiveDirFlag(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("TEST_TILDE_TOKEN", "secret")
+	t.Setenv("HOME", home)                 // serial: t.Setenv panics under t.Parallel()
+	t.Setenv("TEST_TILDE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_TILDE_TOKEN\n")
 
 	newRunner := func(backup.ForgeConfig) (backup.Runner, error) {
@@ -424,8 +438,8 @@ func TestCLIRunExpandsTildeInArchiveDirFlag(t *testing.T) {
 
 func TestCLIRunLeavesOtherUserTildePathUnexpanded(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("TEST_TILDE_TOKEN", "secret")
+	t.Setenv("HOME", home)                 // serial: t.Setenv panics under t.Parallel()
+	t.Setenv("TEST_TILDE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_TILDE_TOKEN\n")
 
 	var dirs []string
@@ -443,7 +457,7 @@ func TestCLIRunLeavesOtherUserTildePathUnexpanded(t *testing.T) {
 
 func TestCLIRunPrunesRemovedMirrorWithFlag(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_PRUNE_TOKEN\n")
-	t.Setenv("TEST_PRUNE_TOKEN", "secret")
+	t.Setenv("TEST_PRUNE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 	staleDir := filepath.Join(dest, "home", backup.TestRemovedRepoPath+".git")
 	require.NoError(t, os.MkdirAll(staleDir, 0o755))
@@ -466,7 +480,7 @@ func TestCLIRunPrunesRemovedMirrorWithFlag(t *testing.T) {
 
 func TestCLIRunLeavesRemovedMirrorAloneWithoutFlag(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_NOPRUNE_TOKEN\n")
-	t.Setenv("TEST_NOPRUNE_TOKEN", "secret")
+	t.Setenv("TEST_NOPRUNE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 	staleDir := filepath.Join(dest, "home", backup.TestRemovedRepoPath+".git")
 	require.NoError(t, os.MkdirAll(staleDir, 0o755))
@@ -487,7 +501,7 @@ func TestCLIRunLeavesRemovedMirrorAloneWithoutFlag(t *testing.T) {
 
 func TestCLIRunDryRunPreviewsPruneWithFlag(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYPRUNE_TOKEN\n")
-	t.Setenv("TEST_DRYPRUNE_TOKEN", "secret")
+	t.Setenv("TEST_DRYPRUNE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 	staleDir := filepath.Join(dest, "home", backup.TestRemovedRepoPath+".git")
 	require.NoError(t, os.MkdirAll(staleDir, 0o755))
@@ -507,7 +521,7 @@ func TestCLIRunDryRunPreviewsPruneWithFlag(t *testing.T) {
 
 func TestCLIRunDryRunOmitsPruneCountWithoutFlag(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYNOPRUNE_TOKEN\n")
-	t.Setenv("TEST_DRYNOPRUNE_TOKEN", "secret")
+	t.Setenv("TEST_DRYNOPRUNE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 
 	var out bytes.Buffer
@@ -528,7 +542,7 @@ func TestCLIRunDryRunOmitsPruneCountWithoutFlag(t *testing.T) {
 // forge, only excluded from this particular run.
 func TestCLIRunDryRunPruneIgnoresStateFilter(t *testing.T) {
 	cfgPath := writeConfig(t, "forges:\n  - name: home\n    kind: forgejo\n    url: https://git.example.org\n    token_env: TEST_DRYPRUNESTATE_TOKEN\n")
-	t.Setenv("TEST_DRYPRUNESTATE_TOKEN", "secret")
+	t.Setenv("TEST_DRYPRUNESTATE_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	dest := t.TempDir()
 	archivedMirror := filepath.Join(dest, "home", backup.TestArchivedRepoPath+".git")
 	require.NoError(t, os.MkdirAll(archivedMirror, 0o755))
@@ -570,8 +584,8 @@ forges:
     url: https://git.example.org
     token_env: TEST_MULTI_FORGE_B
 `)
-	t.Setenv("TEST_MULTI_FORGE_A", "secret")
-	t.Setenv("TEST_MULTI_FORGE_B", "secret")
+	t.Setenv("TEST_MULTI_FORGE_A", "secret") // serial: t.Setenv panics under t.Parallel()
+	t.Setenv("TEST_MULTI_FORGE_B", "secret") // serial: t.Setenv panics under t.Parallel()
 
 	var dirs []string
 	newRunner := func(fc backup.ForgeConfig) (backup.Runner, error) {

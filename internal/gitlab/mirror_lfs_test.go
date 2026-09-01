@@ -27,6 +27,12 @@ import (
 // omnibusConfig in container_test.go turns off every other optional
 // subsystem this package's tests don't need and LFS was never one of
 // them, and this test needs no extra toggle to pass.
+// t.Parallel() deliberately stays off on all three tests in this file:
+// each boots its own real GitLab CE container (startWithLFS), and running
+// them concurrently would mean several full GitLab CE instances at once on
+// whatever's running the nightly lane -- a fixed, predictable resource cost
+// matters more here than the wall-clock time saved, the same "shared...
+// fixed external resource" exception rules/go-test.md carves out.
 func TestMirrorSyncFetchesLFSContent(t *testing.T) {
 	f := startWithLFS(t)
 	f.pushLFSRepo(t, "lfs-repo")

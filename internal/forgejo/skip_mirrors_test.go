@@ -33,6 +33,8 @@ func searchServer(t *testing.T) *httptest.Server {
 }
 
 func TestListReposLogsWhichRepoSkipMirrorsExcluded(t *testing.T) {
+	t.Parallel()
+
 	srv := searchServer(t)
 	defer srv.Close()
 
@@ -52,6 +54,8 @@ func TestListReposLogsWhichRepoSkipMirrorsExcluded(t *testing.T) {
 }
 
 func TestListReposLogsNothingWhenSkipMirrorsIsOff(t *testing.T) {
+	t.Parallel()
+
 	srv := searchServer(t)
 	defer srv.Close()
 

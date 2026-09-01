@@ -62,6 +62,8 @@ func filterGitEnv(env []string) []string {
 }
 
 func TestArchiveWritesAGzippedTar(t *testing.T) {
+	t.Parallel()
+
 	repo := bareRepo(t)
 	out := filepath.Join(t.TempDir(), "repo.tar.gz")
 
@@ -71,6 +73,8 @@ func TestArchiveWritesAGzippedTar(t *testing.T) {
 }
 
 func TestArchiveExtractsToAClonableRepo(t *testing.T) {
+	t.Parallel()
+
 	repo := bareRepo(t)
 	out := filepath.Join(t.TempDir(), "repo.tar.gz")
 	require.NoError(t, backup.Archive(repo, out))
@@ -86,6 +90,8 @@ func TestArchiveExtractsToAClonableRepo(t *testing.T) {
 }
 
 func TestArchiveEntriesAreWrappedInAFolderNamedAfterTheMirror(t *testing.T) {
+	t.Parallel()
+
 	repo := bareRepo(t)
 	out := filepath.Join(t.TempDir(), "repo.tar.gz")
 	require.NoError(t, backup.Archive(repo, out))
@@ -97,6 +103,8 @@ func TestArchiveEntriesAreWrappedInAFolderNamedAfterTheMirror(t *testing.T) {
 }
 
 func TestArchiveLeavesNoTmpFileOnSuccess(t *testing.T) {
+	t.Parallel()
+
 	repo := bareRepo(t)
 	out := filepath.Join(t.TempDir(), "repo.tar.gz")
 
@@ -106,6 +114,8 @@ func TestArchiveLeavesNoTmpFileOnSuccess(t *testing.T) {
 }
 
 func TestArchiveIsReproducible(t *testing.T) {
+	t.Parallel()
+
 	repo := bareRepo(t)
 	dir := t.TempDir()
 	first := filepath.Join(dir, "first.tar.gz")

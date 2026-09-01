@@ -69,6 +69,8 @@ func issuePaginationServer(t *testing.T) *httptest.Server {
 }
 
 func TestIssueExporterPaginatesComments(t *testing.T) {
+	t.Parallel()
+
 	srv := issuePaginationServer(t)
 	defer srv.Close()
 
