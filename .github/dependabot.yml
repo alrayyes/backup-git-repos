@@ -42,3 +42,15 @@ updates:
       prefix: "fix"
       prefix-development: "fix"
       include: "scope"
+
+  # flake.lock inputs (nixpkgs, flake-utils). Alternate packaging only -
+  # goreleaser still builds the real distributed artifact, so a bump here
+  # is tooling, not a fix to what ships.
+  - package-ecosystem: "nix"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"

@@ -2,6 +2,9 @@
 /backup-git-repos
 /dist/
 
+# `nix build`'s own output symlink.
+/result
+
 # Node.js / Bun
 node_modules/
 
