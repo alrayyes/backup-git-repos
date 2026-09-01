@@ -81,6 +81,11 @@ go build -o backup-git-repos ./cmd/backup-git-repos
 Released binaries are attached to each [GitHub
 release](https://github.com/alrayyes/backup-git-repos/releases).
 
+Or, on Nix or NixOS: `nix run github:alrayyes/backup-git-repos` to try it, or
+`nix profile install github:alrayyes/backup-git-repos` to keep it. No hosted
+binary cache -- a first run/install builds from source, same tradeoff as
+every other from-source path here.
+
 Or run the container image, `git` and all — a natural fit for a scheduled job.
 It runs as UID/GID `1000`, not root, so the destination directory needs to be
 writable by that UID on the host:
