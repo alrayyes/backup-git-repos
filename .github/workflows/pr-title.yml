@@ -1,0 +1,40 @@
+name: PR title
+
+# pull_request_target, not pull_request: this needs base-repo permissions
+# to work on a PR opened from a fork, since the action posts a status
+# check and (on failure) a comment back onto the PR.
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint-pr-title:
+    name: Semantic PR title
+    runs-on: ubuntu-latest
+    steps:
+      # commitlint checks individual commit messages inside a PR; it never
+      # sees the PR title. On a squash merge, GitHub defaults the squash
+      # commit message to the PR title -- and release-please reads that
+      # commit history to decide the next version -- so an unchecked title
+      # is the one thing standing between a merge and a broken release.
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Mirrors @commitlint/config-conventional's own type-enum, so this
+          # check and commitlint's never disagree about what's valid.
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
