@@ -96,3 +96,48 @@ func TestFakeReleaseExporter(t *testing.T) {
 		return fakeReleaseExporter{}
 	})
 }
+
+// fakePullRequestExporter is an in-memory MetadataExporter for
+// MetadataPullRequests, seeded on TestActiveRepoPath the same way every real
+// forge's pull-requests exporter is expected to seed its own fixture
+// repository -- an open pull request with one diff-anchored review comment,
+// and a merged one with none.
+type fakePullRequestExporter struct{}
+
+func (fakePullRequestExporter) Kind() backup.MetadataKind { return backup.MetadataPullRequests }
+
+func (fakePullRequestExporter) Export(_ context.Context, repo backup.Repo, dir string) error {
+	if repo.Path != backup.TestActiveRepoPath {
+		return nil
+	}
+
+	now := time.Date(2026, 1, 2, 15, 4, 5, 0, time.UTC)
+	if err := backup.WritePullRequest(dir, backup.PullRequest{
+		Number: 1, Title: backup.TestPullRequestOpenTitle, Body: "please review this",
+		Author: "alice", State: "open", SourceBranch: "feature", TargetBranch: "main",
+		CreatedAt: now, UpdatedAt: now,
+		Comments: []backup.ReviewComment{{
+			Author: "bob", Body: backup.TestPullRequestReviewCommentBody, CreatedAt: now,
+			File: backup.TestPullRequestReviewCommentFile, Line: backup.TestPullRequestReviewCommentLine,
+		}},
+	}); err != nil {
+		return fmt.Errorf("write pull request 1: %w", err)
+	}
+
+	mergedAt := now.Add(time.Hour)
+	if err := backup.WritePullRequest(dir, backup.PullRequest{
+		Number: 2, Title: backup.TestPullRequestMergedTitle, Body: "already landed",
+		Author: "alice", State: "merged", SourceBranch: "fix", TargetBranch: "main",
+		CreatedAt: now, UpdatedAt: mergedAt, ClosedAt: &mergedAt, MergedAt: &mergedAt,
+	}); err != nil {
+		return fmt.Errorf("write pull request 2: %w", err)
+	}
+
+	return nil
+}
+
+func TestFakePullRequestExporter(t *testing.T) {
+	backup.TestPullRequestExporter(t, func(*testing.T) backup.MetadataExporter {
+		return fakePullRequestExporter{}
+	})
+}

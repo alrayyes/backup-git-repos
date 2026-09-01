@@ -1,0 +1,28 @@
+[
+  {
+    "number": 1,
+    "title": "open pull request",
+    "body": "please review this",
+    "user": { "login": "alice" },
+    "state": "open",
+    "head": { "ref": "feature" },
+    "base": { "ref": "main" },
+    "created_at": "2026-08-15T08:00:00Z",
+    "updated_at": "2026-08-15T09:00:00Z",
+    "closed_at": null,
+    "merged_at": null
+  },
+  {
+    "number": 2,
+    "title": "merged pull request",
+    "body": "already landed",
+    "user": { "login": "alice" },
+    "state": "closed",
+    "head": { "ref": "fix" },
+    "base": { "ref": "main" },
+    "created_at": "2026-08-15T08:00:00Z",
+    "updated_at": "2026-08-15T10:00:00Z",
+    "closed_at": "2026-08-15T10:00:00Z",
+    "merged_at": "2026-08-15T10:00:00Z"
+  }
+]

@@ -16,12 +16,12 @@ import (
 
 // MetadataKind identifies one kind of forge metadata a MetadataExporter can
 // write alongside a repository's mirror -- metadata a bare git mirror never
-// captures, because none of it lives in the git object graph. MetadataIssues
-// and MetadataReleases are the kinds this package defines so far; #82 and
-// #84 (pull/merge requests and CI/CD config, split out of the same parent
-// ticket as issues and releases) each add their own constant here and their
-// own MetadataExporter per forge adapter, without changing this type, the
-// MetadataExporter interface below, or the on-disk layout it documents.
+// captures, because none of it lives in the git object graph. MetadataIssues,
+// MetadataReleases and MetadataPullRequests are the kinds this package
+// defines so far; #84 (CI/CD config, split out of the same parent ticket as
+// the rest) adds its own constant here and its own MetadataExporter per
+// forge adapter, without changing this type, the MetadataExporter interface
+// below, or the on-disk layout it documents.
 type MetadataKind string
 
 // MetadataIssues selects a repository's issues and their comments.
@@ -32,15 +32,20 @@ const MetadataIssues MetadataKind = "issues"
 // for every tag.
 const MetadataReleases MetadataKind = "releases"
 
+// MetadataPullRequests selects a repository's pull/merge requests and their
+// review comment threads.
+const MetadataPullRequests MetadataKind = "pull-requests"
+
 // knownMetadataKinds are the values --export-metadata accepts.
 var knownMetadataKinds = map[MetadataKind]bool{
-	MetadataIssues:   true,
-	MetadataReleases: true,
+	MetadataIssues:       true,
+	MetadataReleases:     true,
+	MetadataPullRequests: true,
 }
 
 // ErrBadMetadataKind means --export-metadata named a kind this build
 // doesn't know how to export.
-var ErrBadMetadataKind = errors.New("export-metadata must be one of: issues, releases")
+var ErrBadMetadataKind = errors.New("export-metadata must be one of: issues, releases, pull-requests")
 
 // ParseMetadataKinds parses --export-metadata's repeatable,
 // comma-separated values into the set of MetadataKind a Run should export.
@@ -69,12 +74,12 @@ func ParseMetadataKinds(vals []string) ([]MetadataKind, error) {
 // into a directory Run has already created for it. Each forge adapter that
 // supports a kind implements one MetadataExporter per kind -- #81 added an
 // issues MetadataExporter to internal/gitlab, internal/forgejo and
-// internal/github, and this one adds a releases MetadataExporter alongside
-// it, following the same shape as those packages' existing Lister and
-// Remoter. A future MetadataKind (pull/merge requests, CI/CD config) gets
-// its own MetadataExporter type per adapter package, wired into that
-// forge's Runner in cmd/backup-git-repos/main.go's newRunner alongside the
-// existing ones -- no change needed here.
+// internal/github, and releases and pull-requests MetadataExporters were
+// added alongside it, following the same shape as those packages' existing
+// Lister and Remoter. A future MetadataKind (CI/CD config) gets its own
+// MetadataExporter type per adapter package, wired into that forge's Runner
+// in cmd/backup-git-repos/main.go's newRunner alongside the existing ones --
+// no change needed here.
 //
 // On-disk layout: Run writes a kind's output under
 // "<dest>/<repo.Path>.metadata/<kind>/" -- a sibling of the repository's own
@@ -259,6 +264,72 @@ func WriteRelease(dir string, release Release) error {
 
 	if err := os.WriteFile(filepath.Join(rd, "release.json"), data, 0o600); err != nil {
 		return fmt.Errorf("write release %s: %w", release.TagName, err)
+	}
+
+	return nil
+}
+
+// PullRequest is one forge pull/merge request and its review comment
+// threads -- the format every MetadataPullRequests exporter writes, one
+// JSON file per pull/merge request, named by its number, under
+// "<dest>/<repo.Path>.metadata/pull-requests/<number>.json". Every forge
+// (GitLab, Forgejo, GitHub) maps its own pull/merge request shape onto this
+// one, so a file this tool wrote reads the same regardless of which forge it
+// came from -- the same convention Issue already follows. State is "open",
+// "closed", or "merged": a merged pull/merge request is reported as
+// "merged" rather than "closed" even though every forge's own API also
+// marks it closed, since that distinction is exactly what a restored
+// history needs to tell "abandoned" from "landed" apart. ClosedAt and
+// MergedAt are both nil for one still open. Comments is always a (possibly
+// empty, never nil) slice, the same "still written, not skipped" rule
+// Issue's own Comments field follows.
+type PullRequest struct {
+	Number       int             `json:"number"`
+	Title        string          `json:"title"`
+	Body         string          `json:"body"`
+	Author       string          `json:"author"`
+	State        string          `json:"state"` // "open", "closed", or "merged"
+	SourceBranch string          `json:"source_branch"`
+	TargetBranch string          `json:"target_branch"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
+	ClosedAt     *time.Time      `json:"closed_at,omitempty"`
+	MergedAt     *time.Time      `json:"merged_at,omitempty"`
+	Comments     []ReviewComment `json:"comments"`
+}
+
+// ReviewComment is one comment in a PullRequest's review comment threads.
+// File and Line are both set when the comment is diff-anchored -- pinned to
+// a specific file and line of the pull/merge request's diff -- and both
+// empty/zero for a general review comment that isn't anchored to a
+// particular line.
+type ReviewComment struct {
+	Author    string    `json:"author"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	File      string    `json:"file,omitempty"`
+	Line      int       `json:"line,omitempty"`
+}
+
+// WritePullRequest marshals pr as indented JSON and writes it to
+// "<dir>/<pr.Number>.json". dir must already exist, the same precondition
+// WriteIssue documents -- Run creates it once before calling an exporter's
+// Export at all. Shared by every forge's pull-requests MetadataExporter so
+// the file layout and JSON formatting stays identical regardless of which
+// forge wrote it, the same reasoning WriteIssue's own doc comment gives.
+func WritePullRequest(dir string, pr PullRequest) error {
+	if pr.Comments == nil {
+		pr.Comments = []ReviewComment{}
+	}
+
+	data, err := json.MarshalIndent(pr, "", "  ")
+	if err != nil {
+		return fmt.Errorf("write pull request %d: %w", pr.Number, err)
+	}
+
+	path := filepath.Join(dir, strconv.Itoa(pr.Number)+".json")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("write pull request %d: %w", pr.Number, err)
 	}
 
 	return nil

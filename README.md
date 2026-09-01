@@ -40,9 +40,11 @@ or write either out as a `.tar.gz` alongside the mirror.
   own git repositories, never returned by the projects API a project itself
   comes from, so a run mirrors them as their own entries alongside the
   project rather than silently missing them
-- Optionally exports a repository's issues and their comments alongside its
-  mirror (`--export-metadata issues`) -- metadata a bare git mirror never
-  captures on its own, since none of it lives in the git history
+- Optionally exports a repository's issues, its releases and their uploaded
+  assets, or its pull/merge requests and their review comments, alongside
+  its mirror (`--export-metadata issues,releases,pull-requests`) --
+  metadata a bare git mirror never captures on its own, since none of it
+  lives in the git history
 
 ## Requirements
 
@@ -225,6 +227,8 @@ Resulting layout:
   archive/home/team/old-repo.tar.gz       # archived repo selected by --archive:
                                            # only the tar.gz, no .git alongside it
   home/team/repo.metadata/issues/42.json  # only when --export-metadata issues is set
+  home/team/repo.metadata/releases/v1.2.0/release.json    # only when --export-metadata releases is set
+  home/team/repo.metadata/pull-requests/7.json  # only when --export-metadata pull-requests is set
 ```
 
 ### Restoring a repository
@@ -259,12 +263,12 @@ real file contents, the same way it would against the original forge.
 A bare mirror captures every commit, branch and tag, but nothing else a
 forge stores about a repository -- issues, pull/merge requests, releases,
 CI/CD config -- because none of it lives in the git history. `--export-metadata`
-is opt-in per kind, comma-separated or repeated: `--export-metadata issues`.
-Off by default, and off is exactly today's behaviour -- nothing about a run
-changes unless you ask for a kind by name. `issues` and `releases` are the
-kinds this release supports; more (pull/merge requests, CI/CD config) are
-planned as separate, later additions to the same flag, opted into
-individually.
+is opt-in per kind, comma-separated or repeated: `--export-metadata
+issues,releases,pull-requests`. Off by default, and off is exactly today's
+behaviour -- nothing about a run changes unless you ask for a kind by
+name. `issues`, `releases` and `pull-requests` are the kinds this release
+supports; more (CI/CD config) are planned as a separate, later addition to
+the same flag, opted into individually.
 
 Each kind lands in its own subdirectory alongside the repository's mirror,
 never inside it:
@@ -275,6 +279,7 @@ never inside it:
 /srv/backups/git/home/team/repo.metadata/issues/2.json
 /srv/backups/git/home/team/repo.metadata/releases/v1.2.0/release.json
 /srv/backups/git/home/team/repo.metadata/releases/v1.2.0/assets/backup-git-repos_linux_amd64.tar.gz
+/srv/backups/git/home/team/repo.metadata/pull-requests/7.json
 ```
 
 One JSON file per issue, named by its number, holding its title, body,
@@ -344,6 +349,43 @@ fetched with whatever rate limit the forge's API already enforces; a
 repository with many large releases can take noticeably longer to export
 than one with none.
 
+`pull-requests` follows the same shape, one JSON file per pull/merge
+request, named by its number, holding its title, body, author, state
+(`open`, `closed`, or `merged` -- a merged one is reported as `merged`
+rather than `closed`, since that's exactly the distinction a restored
+history needs to tell "abandoned" from "landed" apart), source branch,
+target branch, timestamps, and its review comments. A comment anchored to
+a specific line of the diff carries `file` and `line`; a general review
+comment that isn't diff-anchored carries neither:
+
+```json
+{
+  "number": 7,
+  "title": "add session refresh endpoint",
+  "body": "...",
+  "author": "alice",
+  "state": "merged",
+  "source_branch": "feat/session-refresh",
+  "target_branch": "main",
+  "created_at": "2026-08-15T08:00:00Z",
+  "updated_at": "2026-08-15T10:00:00Z",
+  "merged_at": "2026-08-15T10:00:00Z",
+  "comments": [
+    { "author": "bob", "body": "looks good", "created_at": "2026-08-15T09:00:00Z" },
+    {
+      "author": "bob",
+      "body": "off by one here",
+      "created_at": "2026-08-15T09:05:00Z",
+      "file": "auth.go",
+      "line": 42
+    }
+  ]
+}
+```
+
+The same exclusions as `issues` apply: only what the configured token can
+already see gets written, never more.
+
 ### Flags
 
 - `--config, -c`: path to the YAML config (default:
@@ -363,7 +405,7 @@ than one with none.
 - `--export-metadata`: comma-separated or repeated; also export these kinds
   of forge metadata alongside each repository's mirror, under
   `<dest>/<repo>.metadata/<kind>/` (see [Metadata
-  export](#metadata-export)). Currently, `issues` and `releases`. Off by default: a
+  export](#metadata-export)). Currently, `issues`, `releases` and `pull-requests`. Off by default: a
   run's behaviour is unchanged from before this flag existed unless you name
   a kind
 - `--concurrency, -j`: repositories mirrored in parallel (default the number

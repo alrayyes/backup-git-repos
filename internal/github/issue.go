@@ -114,7 +114,7 @@ func (e *IssueExporter) fetchIssuesPage(ctx context.Context, repoPath string, pa
 	u.RawQuery = q.Encode()
 
 	var items []ghIssue
-	if err := getJSON(ctx, e.Client, u, &items); err != nil {
+	if err := e.Client.getJSON(ctx, u, &items); err != nil {
 		return nil, fmt.Errorf("list github issues for %s: %w", repoPath, err)
 	}
 
@@ -135,7 +135,7 @@ func (e *IssueExporter) fetchComments(ctx context.Context, repoPath string, numb
 		u.RawQuery = q.Encode()
 
 		var comments []ghComment
-		if err := getJSON(ctx, e.Client, u, &comments); err != nil {
+		if err := e.Client.getJSON(ctx, u, &comments); err != nil {
 			return nil, fmt.Errorf("list github comments for %s#%d: %w", repoPath, number, err)
 		}
 		all = append(all, comments...)

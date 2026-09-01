@@ -462,3 +462,99 @@ func readRelease(t *testing.T, dir, tag string) Release {
 
 	return release
 }
+
+// The pull/merge requests every MetadataPullRequests exporter's own fixture
+// set is expected to seed on TestActiveRepoPath, on top of what TestLister
+// already requires: an open one carrying a single diff-anchored review
+// comment on TestPullRequestReviewCommentFile at
+// TestPullRequestReviewCommentLine, and a merged one carrying none -- so
+// TestPullRequestExporter can prove both the inline-comment acceptance
+// criterion and #81's "no comments" one from the same fixture set,
+// following the same shape TestIssueOpenTitle/TestIssueClosedTitle already
+// established for issues.
+const (
+	TestPullRequestOpenTitle         = "open pull request"
+	TestPullRequestMergedTitle       = "merged pull request"
+	TestPullRequestReviewCommentBody = "a review comment on the open pull request"
+	TestPullRequestReviewCommentFile = "README.md"
+	TestPullRequestReviewCommentLine = 1
+)
+
+// TestPullRequestExporter runs the specification every MetadataPullRequests
+// MetadataExporter must satisfy, whether it's backed by a fake or a real
+// forge: newExporter builds the exporter under test, seeded (per the
+// consts above) against TestActiveRepoPath the same way every Lister
+// fixture already is.
+func TestPullRequestExporter(t *testing.T, newExporter func(t *testing.T) MetadataExporter) {
+	t.Helper()
+
+	t.Run("reports its kind", func(t *testing.T) {
+		exp := newExporter(t)
+		require.Equal(t, MetadataPullRequests, exp.Kind())
+	})
+
+	t.Run("writes every pull/merge request, including one with no comments, as its own documented file", func(t *testing.T) {
+		exp := newExporter(t)
+		dir := t.TempDir()
+
+		err := exp.Export(context.Background(), Repo{Path: TestActiveRepoPath}, dir)
+		require.NoError(t, err)
+
+		prs := readPullRequests(t, dir)
+
+		open := findPullRequestByTitle(t, prs, TestPullRequestOpenTitle)
+		require.Equal(t, "open", open.State)
+		require.NotEmpty(t, open.Author)
+		require.NotEmpty(t, open.SourceBranch)
+		require.NotEmpty(t, open.TargetBranch)
+		require.False(t, open.CreatedAt.IsZero())
+		require.False(t, open.UpdatedAt.IsZero())
+		require.Nil(t, open.ClosedAt)
+		require.Nil(t, open.MergedAt)
+		require.Len(t, open.Comments, 1)
+		require.Equal(t, TestPullRequestReviewCommentBody, open.Comments[0].Body)
+		require.NotEmpty(t, open.Comments[0].Author)
+		require.False(t, open.Comments[0].CreatedAt.IsZero())
+		require.Equal(t, TestPullRequestReviewCommentFile, open.Comments[0].File)
+		require.Equal(t, TestPullRequestReviewCommentLine, open.Comments[0].Line)
+
+		merged := findPullRequestByTitle(t, prs, TestPullRequestMergedTitle)
+		require.Equal(t, "merged", merged.State)
+		require.NotNil(t, merged.MergedAt)
+		require.NotNil(t, merged.Comments, "a pull/merge request with no comments must still be written with an empty list, not skipped")
+		require.Empty(t, merged.Comments)
+	})
+}
+
+// readPullRequests reads every "*.json" file WritePullRequest wrote into dir
+// back into a PullRequest, in no particular order.
+func readPullRequests(t *testing.T, dir string) []PullRequest {
+	t.Helper()
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+
+	prs := make([]PullRequest, 0, len(entries))
+	for _, e := range entries {
+		data, err := os.ReadFile(filepath.Join(dir, e.Name())) //nolint:gosec // e.Name() came straight from os.ReadDir(dir), not untrusted input
+		require.NoError(t, err)
+
+		var pr PullRequest
+		require.NoError(t, json.Unmarshal(data, &pr))
+		prs = append(prs, pr)
+	}
+
+	return prs
+}
+
+func findPullRequestByTitle(t *testing.T, prs []PullRequest, title string) PullRequest {
+	t.Helper()
+	for _, pr := range prs {
+		if pr.Title == title {
+			return pr
+		}
+	}
+	t.Fatalf("no pull request titled %q among %d pull requests", title, len(prs))
+
+	return PullRequest{}
+}
