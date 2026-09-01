@@ -16,6 +16,10 @@ unnoticed. Tracked as GitHub issue #121, found while auditing #102.
   `nlreturn` wants before each bare `return`.
 - `internal/gitlab/mirror_test.go:81` -- same `nlreturn` fix on
   `return string(out)`.
+- **Found during implementation**: golangci-lint doesn't report every
+  issue in a file in a single pass, so fixing the 5 findings preceding
+  this one surfaced 7 more `nlreturn` findings in `recorded_test.go` and
+  `update_fixtures_test.go`, fixed the same way once visible.
 - No behavior change: these are style-only findings in test helper code.
 
 ## Capabilities

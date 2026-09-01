@@ -139,6 +139,7 @@ func fetchRawProjects(t *testing.T, f fixture, archived bool) []byte {
 	t.Helper()
 
 	u := fmt.Sprintf("%s/api/v4/projects?membership=true&per_page=100&page=1&archived=%t", f.BaseURL, archived)
+
 	return fetchRaw(t, f, u)
 }
 
@@ -149,6 +150,7 @@ func fetchRawProjectSub(t *testing.T, f fixture, projectPath, sub string) []byte
 	t.Helper()
 
 	u := fmt.Sprintf("%s/api/v4/projects/%s/%s", f.BaseURL, url.PathEscape(projectPath), sub)
+
 	return fetchRaw(t, f, u)
 }
 
@@ -165,6 +167,7 @@ func fetchRaw(t *testing.T, f fixture, rawURL string) []byte {
 
 	data, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
+
 	return data
 }
 

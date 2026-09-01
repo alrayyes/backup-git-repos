@@ -47,15 +47,18 @@ func newRecordedServer(t *testing.T) *httptest.Server {
 
 		if role, ok := projectRole(r.URL.Path, "/wikis"); ok {
 			_, _ = w.Write(wikis[role])
+
 			return
 		}
 		if role, ok := projectRole(r.URL.Path, "/snippets"); ok {
 			_, _ = w.Write(snippets[role])
+
 			return
 		}
 
 		if r.URL.Query().Get("archived") == "true" {
 			_, _ = w.Write(archived)
+
 			return
 		}
 		_, _ = w.Write(active)
@@ -98,6 +101,7 @@ func TestRecordedListerContract(t *testing.T) {
 	backup.TestLister(t, func(*testing.T) backup.Lister {
 		client, err := gitlab.New(srv.URL, "unused")
 		require.NoError(t, err)
+
 		return client
 	})
 }
@@ -163,5 +167,6 @@ func readFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(testdataDir, name))
 	require.NoError(t, err)
+
 	return data
 }
