@@ -26,6 +26,8 @@ import (
 // mirrors with the actual object content present, not just the pointer, so
 // git lfs fsck against the resulting mirror reports no missing objects.
 func TestMirrorSyncFetchesLFSContent(t *testing.T) {
+	t.Parallel()
+
 	f := startWithLFS(t)
 	f.pushLFSRepo(t, "lfs-repo")
 
@@ -47,6 +49,8 @@ func TestMirrorSyncFetchesLFSContent(t *testing.T) {
 // LFS content filled in by a later Sync, through the incremental update
 // path rather than a full re-clone.
 func TestMirrorSyncFetchesLFSContentOnUpdate(t *testing.T) {
+	t.Parallel()
+
 	f := startWithLFS(t)
 	cloneURL := f.pushLFSRepo(t, "lfs-repo-update")
 
@@ -73,6 +77,8 @@ func TestMirrorSyncFetchesLFSContentOnUpdate(t *testing.T) {
 // Forgejo's own LFS server, and start()'s dynamic port keeps this test as
 // cheap as every other one in the package.
 func TestMirrorSyncSkipsLFSForOrdinaryRepo(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 	client, err := forgejo.New(f.BaseURL, f.Token)
 	require.NoError(t, err)
@@ -140,6 +146,7 @@ func freeTCPPort(t *testing.T) string {
 	l, err := net.Listen("tcp", ":0")
 	require.NoError(t, err)
 	defer func() { _ = l.Close() }()
+
 	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port)
 }
 
@@ -188,19 +195,18 @@ func legacyMirrorClone(t *testing.T, dir, cloneURL, token string) {
 
 // plainGit runs git in dir with no credentials -- local commands that never
 // talk to the remote (config, lfs track, add, commit, branch).
-func plainGit(t *testing.T, dir string, args ...string) string {
+func plainGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "git %v: %s", args, out)
-	return string(out)
 }
 
 // runAuthedGit authenticates the same way Mirror itself does: the token as
 // a Basic Authorization header, scoped to the remote and passed through the
 // environment, never the command line or a persisted git config.
-func runAuthedGit(t *testing.T, dir, token string, args ...string) string {
+func runAuthedGit(t *testing.T, dir, token string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -212,7 +218,6 @@ func runAuthedGit(t *testing.T, dir, token string, args ...string) string {
 	)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "git %v: %s", args, out)
-	return string(out)
 }
 
 func requireLFSFsckOK(t *testing.T, dir string) {

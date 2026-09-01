@@ -39,6 +39,8 @@ func (f *fakeLister) ListRepos(_ context.Context, state backup.State) ([]backup.
 }
 
 func TestFakeLister(t *testing.T) {
+	t.Parallel()
+
 	backup.TestLister(t, func(*testing.T) backup.Lister {
 		return newFakeLister()
 	})

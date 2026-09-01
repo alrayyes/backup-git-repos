@@ -61,6 +61,8 @@ func (parentCheckingMirrorer) Sync(_ context.Context, _ backup.Remote, dir strin
 }
 
 func TestRun(t *testing.T) {
+	t.Parallel()
+
 	backup.TestBackup(t, func(ctx context.Context, opts backup.Options) (backup.Result, error) {
 		runner := backup.Runner{
 			Lister:   newFakeLister(),
@@ -117,6 +119,9 @@ func (m barrierMirrorer) Sync(ctx context.Context, _ backup.Remote, _ string) er
 }
 
 func TestRunDefaultsConcurrencyToNumCPU(t *testing.T) {
+	// serial: barrierMirrorer needs every runner-spawned goroutine to reach
+	// its channel inside a 5s deadline; parallel CPU contention from other
+	// tests risks flaking a check that's inherently about scheduling.
 	n := runtime.GOMAXPROCS(0)
 	if n < 2 {
 		t.Skip("GOMAXPROCS is 1 on this host; can't distinguish this default from the old hardcoded 1")
@@ -215,6 +220,8 @@ func (nestedRepoLister) ListRepos(_ context.Context, _ backup.State) ([]backup.R
 // concurrent clones sharing a parent and failed with "could not create
 // leading directories" well into a run.
 func TestRunCreatesDestParentBeforeMirroring(t *testing.T) {
+	t.Parallel()
+
 	runner := backup.Runner{
 		Lister:   nestedRepoLister{},
 		Mirrorer: parentCheckingMirrorer{},
@@ -248,6 +255,8 @@ func (erroringLister) ListRepos(context.Context, backup.State) ([]backup.Repo, e
 // existing mirror on disk untouched, --prune-removed or not, rather than
 // pruning against whatever partial set a failed listing might have produced.
 func TestRunDoesNotPruneWhenListingFails(t *testing.T) {
+	t.Parallel()
+
 	dest := t.TempDir()
 	stale := backup.TestSeedStaleMirror(t, dest)
 
@@ -272,6 +281,8 @@ func TestRunDoesNotPruneWhenListingFails(t *testing.T) {
 // than a file, so os.Remove on it fails with something other than "does not
 // exist", the way a permissions problem on the real archive file would.
 func TestRunCountsMirrorPrunedEvenWhenArchiveCleanupFails(t *testing.T) {
+	t.Parallel()
+
 	dest := t.TempDir()
 	archiveDir := t.TempDir()
 	staleMirror := backup.TestSeedStaleMirror(t, dest)
@@ -328,6 +339,8 @@ func (e *recordingExporter) exportedPaths() []string {
 }
 
 func TestRunSkipsMetadataExportWhenNotRequested(t *testing.T) {
+	t.Parallel()
+
 	exp := &recordingExporter{kind: backup.MetadataIssues}
 	runner := backup.Runner{
 		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
@@ -342,6 +355,8 @@ func TestRunSkipsMetadataExportWhenNotRequested(t *testing.T) {
 }
 
 func TestRunExportsRequestedMetadataKind(t *testing.T) {
+	t.Parallel()
+
 	exp := &recordingExporter{kind: backup.MetadataIssues}
 	runner := backup.Runner{
 		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
@@ -372,6 +387,8 @@ func (failingExporter) Export(context.Context, backup.Repo, string) error {
 var errExportFailed = errors.New("export failed")
 
 func TestRunCountsMirrorFailedWhenMetadataExportFails(t *testing.T) {
+	t.Parallel()
+
 	runner := backup.Runner{
 		Lister: newFakeLister(), Mirrorer: fakeMirrorer{}, Remoter: fakeRemoter{},
 		MetadataExporters: []backup.MetadataExporter{failingExporter{kind: backup.MetadataIssues}},
@@ -392,6 +409,8 @@ func TestRunCountsMirrorFailedWhenMetadataExportFails(t *testing.T) {
 // permissions problem or an existing non-directory file at that path would
 // in the real world.
 func TestRunCountsMirrorFailedWhenMetadataDirCannotBeCreated(t *testing.T) {
+	t.Parallel()
+
 	dest := t.TempDir()
 	blocked := filepath.Join(dest, backup.TestActiveRepoPath+".metadata")
 	require.NoError(t, os.MkdirAll(filepath.Dir(blocked), 0o750))
@@ -413,6 +432,8 @@ func TestRunCountsMirrorFailedWhenMetadataDirCannotBeCreated(t *testing.T) {
 }
 
 func TestRunSkipsMetadataExportForAnExporterOfAKindNotRequested(t *testing.T) {
+	t.Parallel()
+
 	// A Runner can carry an exporter for a kind Options.ExportMetadata
 	// didn't ask for -- #82/#83/#84 will each add their own kind to the
 	// same Runner -- and only the requested one should ever run.
@@ -433,6 +454,8 @@ func TestRunSkipsMetadataExportForAnExporterOfAKindNotRequested(t *testing.T) {
 }
 
 func TestRunTimeout(t *testing.T) {
+	// serial: blockingMirrorer races a real 1ms context timeout against
+	// scheduling; parallel CPU contention risks flaking that margin.
 	runner := backup.Runner{
 		Lister:   newFakeLister(),
 		Mirrorer: blockingMirrorer{},

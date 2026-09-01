@@ -43,6 +43,23 @@ tests. Not every serial test is an oversight; some can't go parallel at all.
   independent** — calling it only on the subtest still serializes the outer
   tests against each other; rules/go-test.md asks for both levels.
 
+## Decisions (found during implementation)
+
+- **Every `//go:build integration && gitlab` test that boots its own real
+  GitLab CE container stays serial, not just the three LFS ones the
+  proposal already named.** `start(t)` in `internal/gitlab` has no shared
+  container or `TestMain`. Each of `TestBackupWikisAndSnippets`,
+  `TestContainerBoots`, `TestIssueExporterContract`, `TestListerContract`,
+  `TestMirrorSync`, `TestPullRequestExporterContract`, and
+  `TestReleaseExporterContract` boots one from scratch. Marking all of
+  them `t.Parallel()` genuinely reproduced the resource-exhaustion failure
+  this design already anticipated for LFS: the nightly `-tags='integration
+gitlab' -race` run hung and hit its 10-minute default timeout with
+  several GitLab CE containers starting at once. `internal/forgejo`'s
+  equivalent tests (also each booting their own container via `start(t)`)
+  stay parallel -- confirmed clean and fast (~14 s) -- because Forgejo
+  containers are far lighter than GitLab CE's.
+
 ## Risks / trade-offs
 
 - [Newly parallel tests exposed a latent data race that serial execution

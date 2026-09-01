@@ -18,7 +18,7 @@ func writeConfig(t *testing.T, contents string) string {
 }
 
 func TestLoadConfigReadsForges(t *testing.T) {
-	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:
@@ -41,7 +41,7 @@ forges:
 }
 
 func TestLoadConfigReadsSkipMirrors(t *testing.T) {
-	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:
@@ -59,7 +59,7 @@ forges:
 }
 
 func TestLoadConfigDefaultsSkipMirrorsToFalse(t *testing.T) {
-	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:
@@ -76,6 +76,8 @@ forges:
 }
 
 func TestLoadConfigErrorsOnMissingToken(t *testing.T) {
+	t.Parallel()
+
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:
@@ -91,6 +93,8 @@ forges:
 }
 
 func TestLoadConfigUsesLiteralToken(t *testing.T) {
+	t.Parallel()
+
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:
@@ -107,7 +111,7 @@ forges:
 }
 
 func TestLoadConfigErrorsWhenBothTokenAndTokenEnvSet(t *testing.T) {
-	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:
@@ -124,7 +128,7 @@ forges:
 }
 
 func TestLoadConfigErrorsOnUnknownKind(t *testing.T) {
-	t.Setenv("TEST_FORGEJO_TOKEN", "secret")
+	t.Setenv("TEST_FORGEJO_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	path := writeConfig(t, `
 dest: /srv/backups
 forges:

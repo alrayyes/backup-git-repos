@@ -16,6 +16,8 @@ import (
 )
 
 func TestMirrorSync(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 	client, err := forgejo.New(f.BaseURL, f.Token)
 	require.NoError(t, err)
@@ -25,6 +27,12 @@ func TestMirrorSync(t *testing.T) {
 	m := backup.Mirror{}
 	ctx := context.Background()
 
+	// Deliberately serial: each subtest below builds on the mirror state
+	// (the same dir, synced against the same upstream) the previous one
+	// left behind -- "fetches new commits on a second run" only means
+	// anything once "creates a bare mirror on the first run" has actually
+	// run first, the same reasoning applies down the rest of the chain, so
+	// t.Parallel() on any of them would both race and be meaningless.
 	t.Run("creates a bare mirror on the first run", func(t *testing.T) {
 		require.NoError(t, m.Sync(ctx, remote, dir))
 		require.FileExists(t, filepath.Join(dir, "HEAD"))
@@ -69,5 +77,6 @@ func gitOutput(t *testing.T, dir string, args ...string) string {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
+
 	return string(out)
 }

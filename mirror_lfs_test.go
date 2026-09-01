@@ -92,7 +92,7 @@ func TestMirrorSyncDetectsLFSTrackedInANestedGitattributes(t *testing.T) {
 func TestMirrorSyncFailsFastWhenLFSNeededButMissing(t *testing.T) {
 	origin := lfsOriginRepo(t, true)
 	dir := filepath.Join(t.TempDir(), "mirror.git")
-	t.Setenv("PATH", pathWithGitButNoGitLFS(t))
+	t.Setenv("PATH", pathWithGitButNoGitLFS(t)) // serial: t.Setenv panics under t.Parallel()
 	m := backup.Mirror{}
 
 	err := m.Sync(context.Background(), backup.Remote{CloneURL: origin}, dir)

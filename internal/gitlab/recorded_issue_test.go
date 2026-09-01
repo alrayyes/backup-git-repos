@@ -77,6 +77,8 @@ func readIssueNoteFixtures(t *testing.T) map[string][]byte {
 }
 
 func TestRecordedIssueExporterContract(t *testing.T) {
+	t.Parallel()
+
 	srv := newRecordedIssueServer(t)
 	defer srv.Close()
 

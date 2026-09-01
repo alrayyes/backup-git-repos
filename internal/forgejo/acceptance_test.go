@@ -12,6 +12,8 @@ import (
 )
 
 func TestBackupAcceptance(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 	client, err := forgejo.New(f.BaseURL, f.Token)
 	require.NoError(t, err)
@@ -22,6 +24,7 @@ func TestBackupAcceptance(t *testing.T) {
 			Mirrorer: backup.Mirror{},
 			Remoter:  client,
 		}
+
 		return runner.Run(ctx, opts)
 	})
 }

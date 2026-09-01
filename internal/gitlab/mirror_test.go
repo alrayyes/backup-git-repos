@@ -18,6 +18,10 @@ import (
 // TestMirrorSync exercises backup.Mirror -- forge-agnostic, already proven
 // against Forgejo -- against a real GitLab project. It's the same type with
 // zero changes; only the Remote it's handed differs.
+// No t.Parallel() here: start(t) boots its own real GitLab CE container,
+// and this package's container-booting tests running concurrently would
+// mean several full instances at once on whatever's running the nightly
+// lane -- see mirror_lfs_test.go's own tests for the same reasoning.
 func TestMirrorSync(t *testing.T) {
 	f := start(t)
 	client, err := gitlab.New(f.BaseURL, f.Token)
@@ -28,6 +32,10 @@ func TestMirrorSync(t *testing.T) {
 	m := backup.Mirror{}
 	ctx := context.Background()
 
+	// These subtests are not independent: each mutates the same dir/remote
+	// state the previous one left behind (a second Sync after a commit, a
+	// third after a branch deletion) -- a real exception, not left off by
+	// default. None of them gets t.Parallel().
 	t.Run("creates a bare mirror on the first run", func(t *testing.T) {
 		require.NoError(t, m.Sync(ctx, remote, dir))
 		require.FileExists(t, filepath.Join(dir, "HEAD"))

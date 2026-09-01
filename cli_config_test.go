@@ -13,7 +13,7 @@ import (
 
 func TestCLIConfigInitWritesToXDGDefault(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
@@ -32,7 +32,7 @@ func TestCLIConfigInitWritesToXDGDefault(t *testing.T) {
 
 func TestCLIConfigInitExampleUsesLiteralToken(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 
 	root := backup.NewRootCommand("test", neverNewRunner(t))
 	root.SetOut(new(bytes.Buffer))
@@ -48,6 +48,8 @@ func TestCLIConfigInitExampleUsesLiteralToken(t *testing.T) {
 }
 
 func TestCLIConfigInitRespectsConfigFlag(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "custom.yaml")
 
 	root := backup.NewRootCommand("test", neverNewRunner(t))
@@ -60,6 +62,8 @@ func TestCLIConfigInitRespectsConfigFlag(t *testing.T) {
 }
 
 func TestCLIConfigInitRefusesToOverwriteWithoutForce(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("dest: /already/here\n"), 0o600))
 
@@ -76,6 +80,8 @@ func TestCLIConfigInitRefusesToOverwriteWithoutForce(t *testing.T) {
 }
 
 func TestCLIConfigInitOverwritesWithForce(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("dest: /already/here\n"), 0o600))
 
@@ -93,7 +99,7 @@ func TestCLIConfigInitOverwritesWithForce(t *testing.T) {
 
 func TestCLIRunOffersConfigInitWhenNoneFoundAndInteractive(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 
 	root := backup.NewRootCommand("test", neverNewRunner(t), backup.WithInteractive(true))
 	root.SetOut(new(bytes.Buffer))
@@ -109,7 +115,7 @@ func TestCLIRunOffersConfigInitWhenNoneFoundAndInteractive(t *testing.T) {
 
 func TestCLIRunConfigInitPromptDeclinedFallsBackToError(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 
 	root := backup.NewRootCommand("test", neverNewRunner(t), backup.WithInteractive(true))
 	root.SetOut(new(bytes.Buffer))
@@ -124,7 +130,7 @@ func TestCLIRunConfigInitPromptDeclinedFallsBackToError(t *testing.T) {
 
 func TestCLIRunSkipsConfigInitPromptWithoutInteractive(t *testing.T) {
 	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
 
 	// No WithInteractive(true): defaults to real-terminal detection, which
 	// a test process's stdin never satisfies -- exactly the case this

@@ -47,6 +47,8 @@ func pullRequestServer(t *testing.T) *httptest.Server {
 }
 
 func TestRecordedPullRequestExporterContract(t *testing.T) {
+	t.Parallel()
+
 	srv := pullRequestServer(t)
 	defer srv.Close()
 

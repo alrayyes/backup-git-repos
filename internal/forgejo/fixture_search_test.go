@@ -9,6 +9,8 @@ import (
 )
 
 func TestFixturesSearch(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 
 	var result struct {

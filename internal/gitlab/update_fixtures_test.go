@@ -37,6 +37,9 @@ var fixtureRoles = map[string]string{
 // actual API responses. It's the gitlab tag's nightly-only cost paying for
 // something every pull request gets to use for free: run with
 // `go test -tags='integration gitlab' -run TestUpdateFixtures -update`.
+// No t.Parallel() here: it writes testdata/*.json files shared with every
+// other test in the package, a real exception rather than left off by
+// default.
 func TestUpdateFixtures(t *testing.T) {
 	if !*update {
 		t.Skip("run with -update to refresh recorded fixtures")

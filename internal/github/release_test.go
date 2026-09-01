@@ -52,6 +52,8 @@ func releaseFixtureServer(t *testing.T) *httptest.Server {
 }
 
 func TestRecordedReleaseExporterContract(t *testing.T) {
+	t.Parallel()
+
 	srv := releaseFixtureServer(t)
 	defer srv.Close()
 

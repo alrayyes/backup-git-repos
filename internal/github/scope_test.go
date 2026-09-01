@@ -32,6 +32,8 @@ func scopeServer(t *testing.T, scopes string) *httptest.Server {
 }
 
 func TestListReposRejectsTokenMissingRepoScope(t *testing.T) {
+	t.Parallel()
+
 	srv := scopeServer(t, "public_repo, gist")
 	defer srv.Close()
 
@@ -43,6 +45,8 @@ func TestListReposRejectsTokenMissingRepoScope(t *testing.T) {
 }
 
 func TestListReposAllowsTokenWithRepoScope(t *testing.T) {
+	t.Parallel()
+
 	srv := scopeServer(t, "repo, gist")
 	defer srv.Close()
 
@@ -55,6 +59,8 @@ func TestListReposAllowsTokenWithRepoScope(t *testing.T) {
 }
 
 func TestListReposSkipsScopeCheckWhenHeaderAbsent(t *testing.T) {
+	t.Parallel()
+
 	// A fine-grained token gets no X-OAuth-Scopes header at all -- there's
 	// nothing to check it against, so the request must still succeed.
 	srv := scopeServer(t, "")

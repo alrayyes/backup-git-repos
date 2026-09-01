@@ -90,6 +90,8 @@ func projectRole(path, suffix string) (string, bool) {
 // container satisfies (lister_test.go, gitlab tag), but against JSON
 // recorded from a real container rather than booting one.
 func TestRecordedListerContract(t *testing.T) {
+	t.Parallel()
+
 	srv := newRecordedServer(t)
 	defer srv.Close()
 
@@ -106,6 +108,8 @@ func TestRecordedListerContract(t *testing.T) {
 // snippet are listed under their own paths, and a project with neither
 // gets no entry for either.
 func TestRecordedListerIncludesWikisAndSnippets(t *testing.T) {
+	t.Parallel()
+
 	srv := newRecordedServer(t)
 	defer srv.Close()
 
@@ -121,16 +125,19 @@ func TestRecordedListerIncludesWikisAndSnippets(t *testing.T) {
 	}
 
 	t.Run("includes the project wiki", func(t *testing.T) {
+		t.Parallel()
 		require.Contains(t, paths, backup.TestActiveRepoPath+".wiki")
 	})
 
 	t.Run("includes the project snippet under a distinct path", func(t *testing.T) {
+		t.Parallel()
 		snippetPath := recordedSnippetPath(t)
 		require.NotEqual(t, backup.TestActiveRepoPath, snippetPath)
 		require.Contains(t, paths, snippetPath)
 	})
 
 	t.Run("creates no wiki or snippet entries for a project with neither", func(t *testing.T) {
+		t.Parallel()
 		require.NotContains(t, paths, backup.TestArchivedRepoPath+".wiki")
 		require.NotContains(t, paths, backup.TestEmptyRepoPath+".wiki")
 	})

@@ -65,6 +65,8 @@ func pullRequestPaginationServer(t *testing.T) *httptest.Server {
 }
 
 func TestPullRequestExporterPaginatesComments(t *testing.T) {
+	t.Parallel()
+
 	srv := pullRequestPaginationServer(t)
 	defer srv.Close()
 

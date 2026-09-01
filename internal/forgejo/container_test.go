@@ -17,6 +17,8 @@ import (
 const image = "codeberg.org/forgejo/forgejo:16.0.3@sha256:7c4e1db440be7b2ca685b49d0d7864cdd78e92431f531bf7893659def8200fc5"
 
 func TestContainerBoots(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	ctr, err := tcforgejo.Run(ctx, image)

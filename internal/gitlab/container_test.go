@@ -75,6 +75,10 @@ func omnibusConfig(externalURL string) string {
 		"gitlab_rails['gravatar_enabled'] = false;"
 }
 
+// No t.Parallel() here: runGitLab boots its own real GitLab CE container,
+// and this package's container-booting tests running concurrently would
+// mean several full instances at once on whatever's running the nightly
+// lane -- see mirror_lfs_test.go's own tests for the same reasoning.
 func TestContainerBoots(t *testing.T) {
 	ctx := context.Background()
 

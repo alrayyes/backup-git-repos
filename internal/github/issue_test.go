@@ -37,11 +37,13 @@ func issueServer(t *testing.T) *httptest.Server {
 		if strings.Contains(r.URL.Path, "/comments") {
 			number := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/repos/team/active-repo/issues/"), "/comments")
 			_, _ = w.Write(comments[number])
+
 			return
 		}
 
 		if r.URL.Query().Get("page") != "" && r.URL.Query().Get("page") != "1" {
 			_, _ = w.Write([]byte("[]"))
+
 			return
 		}
 		_, _ = w.Write(issues)
@@ -49,12 +51,15 @@ func issueServer(t *testing.T) *httptest.Server {
 }
 
 func TestRecordedIssueExporterContract(t *testing.T) {
+	t.Parallel()
+
 	srv := issueServer(t)
 	defer srv.Close()
 
 	backup.TestIssueExporter(t, func(*testing.T) backup.MetadataExporter {
 		client, err := github.New(srv.URL, "unused")
 		require.NoError(t, err)
+
 		return github.NewIssueExporter(client)
 	})
 }
@@ -63,6 +68,8 @@ func TestRecordedIssueExporterContract(t *testing.T) {
 // issues.json's third item is a pull request, and it must never be written
 // out as an issue.
 func TestIssueExporterExcludesPullRequests(t *testing.T) {
+	t.Parallel()
+
 	srv := issueServer(t)
 	defer srv.Close()
 

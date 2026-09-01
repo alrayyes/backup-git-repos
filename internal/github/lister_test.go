@@ -24,12 +24,15 @@ const testdataDir = "testdata"
 // will ever have. Keep testdata/repos.json's shape true to what
 // GET /user/repos actually returns if that endpoint's fields ever change.
 func TestRecordedListerContract(t *testing.T) {
+	t.Parallel()
+
 	repos := readFixture(t, "repos.json")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Query().Get("page") != "" && r.URL.Query().Get("page") != "1" {
 			_, _ = w.Write([]byte("[]"))
+
 			return
 		}
 		_, _ = w.Write(repos)
@@ -39,6 +42,7 @@ func TestRecordedListerContract(t *testing.T) {
 	backup.TestLister(t, func(*testing.T) backup.Lister {
 		client, err := github.New(srv.URL, "unused")
 		require.NoError(t, err)
+
 		return client
 	})
 }
@@ -47,5 +51,6 @@ func readFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(testdataDir, name))
 	require.NoError(t, err)
+
 	return data
 }

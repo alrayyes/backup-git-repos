@@ -57,6 +57,8 @@ func newRecordedReleaseServer(t *testing.T) *httptest.Server {
 }
 
 func TestRecordedReleaseExporterContract(t *testing.T) {
+	t.Parallel()
+
 	srv := newRecordedReleaseServer(t)
 	defer srv.Close()
 

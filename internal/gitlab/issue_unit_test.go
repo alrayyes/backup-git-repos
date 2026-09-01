@@ -89,6 +89,8 @@ func writeIssuesPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestIssueExporterUnit(t *testing.T) {
+	t.Parallel()
+
 	srv := issueUnitServer(t)
 	defer srv.Close()
 

@@ -28,12 +28,18 @@ func (f fixture) migrateMirror(t *testing.T) {
 }
 
 func TestSkipMirrorsExcludesForgejoMirrorRepos(t *testing.T) {
+	t.Parallel()
+
 	f := start(t)
 	f.migrateMirror(t)
 
 	client, err := forgejo.New(f.BaseURL, f.Token)
 	require.NoError(t, err)
 
+	// Both subtests toggle the same client's own SkipMirrors field, so they
+	// stay serial rather than getting their own t.Parallel(): running them
+	// concurrently would race one subtest's read against the other's
+	// write/defer-restore of that shared field.
 	t.Run("includes mirror repos by default", func(t *testing.T) {
 		repos, err := client.ListRepos(context.Background(), backup.StateAll)
 		require.NoError(t, err)
@@ -59,5 +65,6 @@ func repoPaths(t *testing.T, repos []backup.Repo) []string {
 	for i, r := range repos {
 		paths[i] = r.Path
 	}
+
 	return paths
 }
