@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/alrayyes/backup-git-repos/compare/v1.10.0...v1.11.0) (2026-09-01)
+
+
+### Features
+
+* **cli:** resolve every run/list flag through flags &gt; env &gt; config &gt; default ([#119](https://github.com/alrayyes/backup-git-repos/issues/119)) ([65dae21](https://github.com/alrayyes/backup-git-repos/commit/65dae2187124f02240a8105b96664a175a9850c6)), closes [#101](https://github.com/alrayyes/backup-git-repos/issues/101)
+
 ## [1.10.0](https://github.com/alrayyes/backup-git-repos/compare/v1.9.0...v1.10.0) (2026-09-01)
 
 
