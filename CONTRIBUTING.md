@@ -76,9 +76,10 @@ That gap includes Git LFS. `Mirror.syncLFS` is proven end-to-end against a
 real, non-mocked container for both Forgejo and GitLab -- `git lfs fsck`
 against the resulting mirror reports no missing objects, for a fresh clone
 and for an incremental update alike. `internal/github`'s `Remote()` already
-authenticates as HTTP Basic, the form GitLab and Forgejo both need for LFS
-too, so there's reason to expect it already works against GitHub.com -- but
-nobody has actually mirrored an LFS-tracked GitHub repository and checked.
+authenticates as HTTP Basic. That's the form GitLab and Forgejo both need
+for LFS too, so there's reason to expect it already works against
+GitHub.com -- but nobody has actually mirrored an LFS-tracked GitHub
+repository and checked.
 Treat GitHub's LFS support as expected to work, not verified against a live
 server, until something changes that.
 

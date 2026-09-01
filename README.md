@@ -40,10 +40,10 @@ or write either out as a `.tar.gz` alongside the mirror.
   own git repositories, never returned by the projects API a project itself
   comes from, so a run mirrors them as their own entries alongside the
   project rather than silently missing them
-- Optionally exports a repository's issues, its releases and their uploaded
-  assets, or its pull/merge requests and their review comments, alongside
-  its mirror (`--export-metadata issues,releases,pull-requests`) --
-  metadata a bare git mirror never captures on its own, since none of it
+- Optionally exports a repository's issues, releases, or pull/merge
+  requests -- including uploaded release assets and review comments --
+  alongside its mirror (`--export-metadata issues,releases,pull-requests`)
+  -- metadata a bare git mirror never captures on its own, since none of it
   lives in the git history
 
 ## Requirements
@@ -395,8 +395,8 @@ upper-cased with dashes replaced by underscores, so `--archive-dir` becomes
 which wins over the config file's own value for the same setting (`dest`
 is the one the config file has a name for today), which falls back to the
 flag's own built-in default -- the standard flag > environment variable >
-config file > default precedence, useful for a container or CI job with no
-file to mount, without giving up the config file for everything else.
+config file > default precedence. That's useful for a container or CI job
+with no file to mount, without giving up the config file for everything else.
 `token`/`token_env` on a forge entry keep their own resolution,
 unaffected by this.
 
@@ -429,7 +429,8 @@ unaffected by this.
 - `--timeout` (`BACKUP_GIT_REPOS_TIMEOUT`): per-repository timeout
   (default `30m`)
 - `--verbose, -v` (`BACKUP_GIT_REPOS_VERBOSE`): log each repository as it
-  starts mirroring and archiving, not just failures and the final summary
+  starts mirroring and archiving rather than only logging failures and the
+  final summary
 - `--dry-run` (`BACKUP_GIT_REPOS_DRY_RUN`): print what the run would do --
   `clone` or `update` per repository, plus `archive` where `--archive`
   selects it, and `prune` where `--prune-removed` would delete a mirror --
