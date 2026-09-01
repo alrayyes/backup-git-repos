@@ -78,6 +78,17 @@ pre-commit:
       glob: "Dockerfile"
       run: bun run lint:dockerfile
 
+    # hadolint reads the Dockerfile as text and never builds it, so a
+    # syntactically fine Dockerfile can still fail to build
+    # (rules/containers.md). Scoped to the Dockerfile plus whatever its
+    # COPY instruction actually needs -- go.mod/go.sum for module
+    # resolution and every *.go file, since scripts/docker-build-check.sh
+    # cross-compiles the binary it stages, the same way goreleaser does
+    # for the real image.
+    - name: docker-build
+      glob: "{Dockerfile,**/*.go,go.mod,go.sum}"
+      run: bun run build:docker
+
     # Keeps package.json itself canonical the way Prettier does for
     # everything else -- see rules/javascript.md.
     - name: sort-package-json
@@ -135,6 +146,9 @@ pre-push:
 
     - name: hadolint
       run: bun run lint:dockerfile
+
+    - name: docker-build
+      run: bun run build:docker
 
     - name: sort-package-json
       run: ./node_modules/.bin/sort-package-json --check package.json
