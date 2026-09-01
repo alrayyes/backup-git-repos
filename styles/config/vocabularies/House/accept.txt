@@ -9,7 +9,7 @@ Markdown
 YAML
 JSON
 CLI
-API
+APIs?
 HTTPS
 SSH
 LFS
@@ -57,3 +57,12 @@ stdout
 stderr
 hadolint
 govulncheck
+sanitiz(e|ed|ing|ation)
+README('s)?
+subtests?
+IIDs?
+orderable
+backfill(s|ed|ing)?
+parameterizing
+CE('s)?
+rollout
