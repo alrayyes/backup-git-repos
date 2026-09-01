@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
 
@@ -184,6 +186,9 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	if err != nil {
 		return err
 	}
+
+	flags = resolvedFlags(buildViper(cmd, configPath))
+
 	state, err := ParseState(flags.state)
 	if err != nil {
 		return err
@@ -220,6 +225,65 @@ func runBackup(cmd *cobra.Command, flags cliFlags, newRunner NewRunner, listOnly
 	}
 
 	return nil
+}
+
+// envPrefix names the environment-variable namespace every run/list flag's
+// environment-variable form lives under: BACKUP_GIT_REPOS_<FLAG_NAME>,
+// upper-cased with dashes replaced by underscores (BindEnvKeyReplacer),
+// e.g. --archive-dir becomes BACKUP_GIT_REPOS_ARCHIVE_DIR.
+const envPrefix = "BACKUP_GIT_REPOS"
+
+// buildViper resolves every flag actually present on cmd through rules/cli.md's
+// standard CLI precedence -- flag > environment variable > config file value
+// > built-in default -- via spf13/viper (rules/go.md's Configuration
+// section). Every flag on cmd is bound automatically (VisitAll), not a
+// hand-maintained list, so a future flag added to addRunFlags/runCmd.Flags()
+// gets an environment-variable form for free rather than needing a matching
+// bind call added by hand. --config itself is deliberately not part of this:
+// it names the file this reads, so binding it here would be circular.
+//
+// configPath is the same path resolveConfigPath already resolved --
+// LoadConfig re-reads that file right after this returns and is what
+// actually surfaces a malformed-file error, so a failed ReadInConfig here is
+// tolerated rather than treated as fatal.
+func buildViper(cmd *cobra.Command, configPath string) *viper.Viper {
+	v := viper.New()
+	v.SetEnvPrefix(envPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	v.AutomaticEnv()
+
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		_ = v.BindPFlag(f.Name, f)
+	})
+
+	v.SetConfigFile(configPath)
+	_ = v.ReadInConfig()
+
+	return v
+}
+
+// resolvedFlags reads every run/list option back through v -- the one merged
+// view flag > environment variable > config file > default resolves to --
+// rather than through cliFlags' own cobra-populated fields, which only ever
+// reflect the flag layer (and, by hand, --dest's existing config-file
+// fallback in resolveDestPaths). cliFlags stops being the source of truth
+// for these fields the moment this runs; it remains cobra's write target
+// (cobra needs somewhere to write flag values), but every read from here on
+// goes through the value this returns instead.
+func resolvedFlags(v *viper.Viper) cliFlags {
+	return cliFlags{
+		dest:           v.GetString("dest"),
+		forges:         v.GetStringSlice("forge"),
+		state:          v.GetString("state"),
+		archive:        v.GetString("archive"),
+		archiveDir:     v.GetString("archive-dir"),
+		concurrency:    v.GetInt("concurrency"),
+		timeout:        v.GetDuration("timeout"),
+		verbose:        v.GetBool("verbose"),
+		dryRun:         v.GetBool("dry-run"),
+		pruneRemoved:   v.GetBool("prune-removed"),
+		exportMetadata: v.GetStringSlice("export-metadata"),
+	}
 }
 
 // resolveConfigPath returns explicit, expanded, if --config was passed,
