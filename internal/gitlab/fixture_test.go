@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"testing"
+	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/stretchr/testify/require"
@@ -202,27 +203,64 @@ func (f fixture) seedOpenMergeRequestWithReviewComment(t *testing.T) {
 		map[string]any{"branch": "mr-open-branch", "content": "active-repo\n", "commit_message": "edit readme"})
 
 	var mr struct {
-		IID      int `json:"iid"`
-		DiffRefs struct {
-			BaseSHA  string `json:"base_sha"`
-			StartSHA string `json:"start_sha"`
-			HeadSHA  string `json:"head_sha"`
-		} `json:"diff_refs"`
+		IID int `json:"iid"`
 	}
 	f.post(t, "/api/v4/projects/team%2Factive-repo/merge_requests", map[string]any{
 		"source_branch": "mr-open-branch", "target_branch": "main",
 		"title": backup.TestPullRequestOpenTitle, "description": "please review this",
 	}, &mr)
 
+	diffRefs := f.waitForMergeRequestDiff(t, mr.IID)
+
 	f.post(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d/discussions", mr.IID), map[string]any{
 		"body": backup.TestPullRequestReviewCommentBody,
 		"position": map[string]any{
-			"base_sha": mr.DiffRefs.BaseSHA, "start_sha": mr.DiffRefs.StartSHA, "head_sha": mr.DiffRefs.HeadSHA,
+			"base_sha": diffRefs.BaseSHA, "start_sha": diffRefs.StartSHA, "head_sha": diffRefs.HeadSHA,
 			"position_type": "text",
+			"old_path":      backup.TestPullRequestReviewCommentFile,
 			"new_path":      backup.TestPullRequestReviewCommentFile,
 			"new_line":      backup.TestPullRequestReviewCommentLine,
 		},
 	}, nil)
+}
+
+// mergeRequestDiffRefs is a merge request's own view of the three SHAs its
+// diff is computed between -- what a discussion's position has to match for
+// GitLab to resolve it against a real line in the diff.
+type mergeRequestDiffRefs struct {
+	BaseSHA  string `json:"base_sha"`
+	StartSHA string `json:"start_sha"`
+	HeadSHA  string `json:"head_sha"`
+}
+
+// waitForMergeRequestDiff polls a freshly created merge request until its
+// diff_refs are populated, and returns them. GitLab computes a merge
+// request's diff asynchronously right after creation -- confirmed live: the
+// create response's own diff_refs come back completely empty
+// ({BaseSHA: StartSHA: HeadSHA:}), and GET .../diffs returns an empty list,
+// for a real few seconds afterward. Posting a diff-anchored discussion with
+// those empty SHAs is what produced the confusing "doesn't support
+// new-style diff notes" / "line_code can't be blank" 400s: GitLab was
+// falling back toward a legacy note path because the position it was
+// handed couldn't resolve to anything, not because the discussions API
+// itself was unready.
+func (f fixture) waitForMergeRequestDiff(t *testing.T, mrIID int) mergeRequestDiffRefs {
+	t.Helper()
+
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		var mr struct {
+			DiffRefs mergeRequestDiffRefs `json:"diff_refs"`
+		}
+		f.do(t, http.MethodGet, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d", mrIID), nil, &mr)
+
+		if mr.DiffRefs.HeadSHA != "" {
+			return mr.DiffRefs
+		}
+
+		require.True(t, time.Now().Before(deadline), "merge request %d never got a diff_refs within 30s", mrIID)
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 func (f fixture) seedMergedMergeRequest(t *testing.T) {
@@ -241,7 +279,43 @@ func (f fixture) seedMergedMergeRequest(t *testing.T) {
 		"title": backup.TestPullRequestMergedTitle, "description": "already landed",
 	}, &mr)
 
-	f.put(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d/merge", mr.IID), nil)
+	// GitLab wants the head SHA it's merging as a safety check against
+	// merging something other than what the caller last saw -- the same
+	// diffRefs.HeadSHA waitForMergeRequestDiff already resolves for the
+	// open merge request's own review comment above, once the async diff
+	// worker has actually run.
+	diffRefs := f.waitForMergeRequestDiff(t, mr.IID)
+	f.waitForMergeable(t, mr.IID)
+	f.put(t, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d/merge", mr.IID),
+		map[string]any{"sha": diffRefs.HeadSHA})
+}
+
+// waitForMergeable polls a merge request until GitLab's own mergeability
+// check reports it clear to merge. A freshly created merge request answers
+// the merge endpoint with 405 Method Not Allowed for the same real few
+// seconds waitForMergeRequestDiff already waits out on the diff side --
+// confirmed live -- since merging depends on that same async check having
+// finished, not just the diff being computed.
+func (f fixture) waitForMergeable(t *testing.T, mrIID int) {
+	t.Helper()
+
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		var mr struct {
+			MergeStatus         string `json:"merge_status"`
+			DetailedMergeStatus string `json:"detailed_merge_status"`
+		}
+		f.do(t, http.MethodGet, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d", mrIID), nil, &mr)
+
+		if mr.DetailedMergeStatus == "mergeable" || mr.MergeStatus == "can_be_merged" {
+			return
+		}
+
+		require.True(t, time.Now().Before(deadline),
+			"merge request %d never became mergeable within 30s (merge_status=%q detailed_merge_status=%q)",
+			mrIID, mr.MergeStatus, mr.DetailedMergeStatus)
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 // post sends an authenticated JSON POST and requires a 2xx response,
@@ -312,9 +386,11 @@ func (f fixture) do(t *testing.T, method, path string, body, out any) {
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
-	require.Less(t, resp.StatusCode, 300, "%s %s", method, path)
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Less(t, resp.StatusCode, 300, "%s %s: %s", method, path, respBody)
 
 	if out != nil {
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(out))
+		require.NoError(t, json.Unmarshal(respBody, out))
 	}
 }
