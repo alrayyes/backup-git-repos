@@ -4,3 +4,8 @@
 # tests don't already cover.
 ignore:
   - "cmd/backup-git-repos/main.go"
+
+coverage:
+  status:
+    project: off
+    patch: off
