@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/alrayyes/backup-git-repos/compare/v1.12.0...v1.12.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **run:** mention config init in the non-interactive missing-config error ([#140](https://github.com/alrayyes/backup-git-repos/issues/140)) ([73f2993](https://github.com/alrayyes/backup-git-repos/commit/73f29932cfb6e27c5e7947279f8a52cc33e35c80)), closes [#139](https://github.com/alrayyes/backup-git-repos/issues/139)
+
 ## [1.12.0](https://github.com/alrayyes/backup-git-repos/compare/v1.11.2...v1.12.0) (2026-09-01)
 
 
