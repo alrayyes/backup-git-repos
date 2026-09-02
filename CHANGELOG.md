@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/alrayyes/backup-git-repos/compare/v1.12.1...v1.12.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **gitlab:** skip flaky LFS integration tests in nightly CI ([#143](https://github.com/alrayyes/backup-git-repos/issues/143)) ([d172ee2](https://github.com/alrayyes/backup-git-repos/commit/d172ee252b467aa683082d5da84f722f3cf7f75c)), closes [#142](https://github.com/alrayyes/backup-git-repos/issues/142)
+
 ## [1.12.1](https://github.com/alrayyes/backup-git-repos/compare/v1.12.0...v1.12.1) (2026-09-01)
 
 
