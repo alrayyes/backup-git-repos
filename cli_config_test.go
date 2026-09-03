@@ -47,6 +47,23 @@ func TestCLIConfigInitExampleUsesLiteralToken(t *testing.T) {
 	require.NotContains(t, string(contents), "token_env:")
 }
 
+func TestCLIConfigInitExampleShowsTokenCommand(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg) // serial: t.Setenv panics under t.Parallel()
+
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"config", "init"})
+
+	require.NoError(t, root.Execute())
+
+	contents, err := os.ReadFile(filepath.Join(xdg, "backup-git-repos", "config.yaml"))
+	require.NoError(t, err)
+
+	require.Contains(t, string(contents), "token_command:",
+		"init never writes a literal secret, but the command form belongs in the commented example beside token/token_env")
+}
+
 func TestCLIConfigInitRespectsConfigFlag(t *testing.T) {
 	t.Parallel()
 

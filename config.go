@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/goccy/go-yaml"
 )
@@ -17,6 +19,12 @@ var ErrMissingToken = errors.New("token environment variable not set")
 // override the other quietly gets ignored -- config validation fails
 // instead, the same as issue #9's SSH-key-vs-token rule.
 var ErrAmbiguousToken = errors.New("set exactly one of token or token_env")
+
+// ErrTokenCommandFailed means a forge's token_command exited non-zero.
+// LoadConfig never falls back to an empty credential silently -- a
+// password manager that's locked or misconfigured has to fail the run, not
+// authenticate as nothing.
+var ErrTokenCommandFailed = errors.New("token_command failed")
 
 // UnknownKindError means a forge's kind isn't one backup-git-repos knows how
 // to talk to.
@@ -40,6 +48,7 @@ type ForgeConfig struct {
 	URL          string `yaml:"url"`
 	TokenEnv     string `yaml:"token_env"`
 	TokenLiteral string `yaml:"token"`
+	TokenCommand string `yaml:"token_command"`
 	Token        string `yaml:"-"`
 
 	// SkipMirrors excludes repositories a forge reports as mirrors of an
@@ -81,22 +90,53 @@ func LoadConfig(path string) (Config, error) {
 			return Config{}, fmt.Errorf("forge %q: %w", f.Name, &UnknownKindError{Kind: f.Kind})
 		}
 
-		if f.TokenLiteral != "" && f.TokenEnv != "" {
-			return Config{}, fmt.Errorf("forge %q: %w", f.Name, ErrAmbiguousToken)
-		}
-
-		if f.TokenLiteral != "" {
-			cfg.Forges[i].Token = f.TokenLiteral
-
-			continue
-		}
-
-		token, ok := os.LookupEnv(f.TokenEnv)
-		if !ok {
-			return Config{}, fmt.Errorf("forge %q: %w: %s", f.Name, ErrMissingToken, f.TokenEnv)
+		token, err := resolveToken(f)
+		if err != nil {
+			return Config{}, fmt.Errorf("forge %q: %w", f.Name, err)
 		}
 		cfg.Forges[i].Token = token
 	}
 
 	return cfg, nil
+}
+
+// resolveToken returns f's token from whichever of TokenCommand,
+// TokenLiteral or TokenEnv it set. TokenCommand wins over the other two
+// unconditionally -- someone who configured it did so on purpose, and a
+// lingering literal or token_env in the same entry shouldn't silently
+// override it.
+func resolveToken(f ForgeConfig) (string, error) {
+	if f.TokenCommand != "" {
+		return runTokenCommand(f.TokenCommand)
+	}
+
+	if f.TokenLiteral != "" && f.TokenEnv != "" {
+		return "", ErrAmbiguousToken
+	}
+
+	if f.TokenLiteral != "" {
+		return f.TokenLiteral, nil
+	}
+
+	token, ok := os.LookupEnv(f.TokenEnv)
+	if !ok {
+		return "", fmt.Errorf("%w: %s", ErrMissingToken, f.TokenEnv)
+	}
+
+	return token, nil
+}
+
+// runTokenCommand runs command through the shell -- so a pipeline or a
+// quoted argument works unmodified, the same as restic's
+// --password-command -- and returns its stdout with exactly one trailing
+// newline trimmed. A non-zero exit is ErrTokenCommandFailed rather than an
+// empty token: a locked password manager or a typo'd command has to stop
+// the run, not authenticate as nothing.
+func runTokenCommand(command string) (string, error) {
+	out, err := exec.Command("sh", "-c", command).Output() //nolint:gosec // command is this config's own trusted setting, the whole point of the feature
+	if err != nil {
+		return "", fmt.Errorf("%w: %s: %w", ErrTokenCommandFailed, command, err)
+	}
+
+	return strings.TrimSuffix(string(out), "\n"), nil
 }

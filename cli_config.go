@@ -25,6 +25,7 @@ forges: []
 #     kind: gitlab # forgejo, gitlab, or github
 #     url: https://gitlab.example.com # omit for github
 #     token: paste-your-token-here
+#     token_command: pass show work/gitlab-token # or hush-hush get <key>, an age-encrypted file, a keyring CLI
 `
 
 // ErrConfigExists means `config init` found a config file already at the

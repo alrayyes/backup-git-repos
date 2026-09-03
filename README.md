@@ -166,6 +166,22 @@ forges:
 export WORK_GITLAB_TOKEN=glpat-...
 ```
 
+A forge entry can also set `token_command`: a shell command whose trimmed
+stdout becomes the token, for pulling it straight from `pass`, `hush-hush`,
+an age-encrypted file, or a keyring CLI instead of writing it anywhere the
+config file or the environment would otherwise hold it. It wins over
+`token`/`token_env` on the same entry unconditionally -- setting it is
+itself the decision to prefer it -- and a non-zero exit fails the run
+rather than backing up with an empty credential:
+
+```yaml
+forges:
+  - name: work
+    kind: gitlab
+    url: https://gitlab.example.com
+    token_command: pass show work/gitlab-token
+```
+
 ## Usage
 
 ```bash
