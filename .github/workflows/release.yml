@@ -17,8 +17,16 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      # The default GITHUB_TOKEN leaves the PR release-please opens stuck at
+      # action_required with zero checks ever run -- the same same-repo,
+      # bot-authored-PR wall rules/releases.md documents for any action that
+      # opens a pull request from inside its own workflow. RELEASE_TOKEN is
+      # a real PAT, so the PR it opens (and every later force-push updating
+      # it) fires pull_request the normal way instead.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
 
   goreleaser:
     name: goreleaser
