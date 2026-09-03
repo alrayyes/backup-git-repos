@@ -74,6 +74,13 @@ pre-commit:
       glob: "Dockerfile"
       run: bun run lint:dockerfile
 
+    # goreleaser check validates .goreleaser.yaml without cutting a release
+    # (rules/go-releases.md) -- wired into the same hook and CI step as
+    # everything else here rather than run ad hoc when the config changes.
+    - name: goreleaser-check
+      glob: ".goreleaser.{yml,yaml}"
+      run: bun run lint:goreleaser
+
     # hadolint reads the Dockerfile as text and never builds it, so a
     # syntactically fine Dockerfile can still fail to build
     # (rules/containers.md). Scoped to the Dockerfile plus whatever its
@@ -137,6 +144,9 @@ pre-push:
 
     - name: hadolint
       run: bun run lint:dockerfile
+
+    - name: goreleaser-check
+      run: bun run lint:goreleaser
 
     - name: docker-build
       run: bun run build:docker

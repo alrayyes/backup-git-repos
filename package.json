@@ -1,6 +1,6 @@
 {
   "name": "backup-git-repos",
-  "version": "1.12.2",
+  "version": "1.12.1",
   "private": true,
   "description": "Tooling config for backup-git-repos; the tool itself is Go",
   "scripts": {
@@ -9,7 +9,9 @@
     "format:md:fix": "prettier --write '**/*.md'",
     "go": "./scripts/docker-go.sh",
     "golangci-lint": "./scripts/docker-golangci-lint.sh",
+    "goreleaser": "./scripts/docker-goreleaser.sh",
     "lint:dockerfile": "docker run --rm -v \"$PWD:/repo:ro\" -w /repo hadolint/hadolint:v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552 hadolint Dockerfile",
+    "lint:goreleaser": "./scripts/docker-goreleaser.sh check",
     "lint:json": "biome check",
     "lint:json:fix": "biome check --write",
     "lint:md": "markdownlint-cli2",
