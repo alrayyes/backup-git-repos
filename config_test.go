@@ -127,6 +127,62 @@ forges:
 	require.ErrorIs(t, err, backup.ErrAmbiguousToken)
 }
 
+func TestLoadConfigUsesTokenCommand(t *testing.T) {
+	t.Parallel()
+
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token_command: echo command-secret
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.Equal(t, "command-secret", cfg.Forges[0].Token,
+		"stdout carries a trailing newline from echo that must be trimmed")
+}
+
+func TestLoadConfigTokenCommandWinsOverLiteral(t *testing.T) {
+	t.Parallel()
+
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token: literal-secret
+    token_command: echo command-secret
+`)
+
+	cfg, err := backup.LoadConfig(path)
+	require.NoError(t, err)
+
+	require.Equal(t, "command-secret", cfg.Forges[0].Token,
+		"someone who configured the command form did it on purpose; a lingering literal must not override it")
+}
+
+func TestLoadConfigErrorsWhenTokenCommandFails(t *testing.T) {
+	t.Parallel()
+
+	path := writeConfig(t, `
+dest: /srv/backups
+forges:
+  - name: home
+    kind: forgejo
+    url: https://git.example.org
+    token_command: exit 1
+`)
+
+	_, err := backup.LoadConfig(path)
+
+	require.ErrorIs(t, err, backup.ErrTokenCommandFailed)
+}
+
 func TestLoadConfigErrorsOnUnknownKind(t *testing.T) {
 	t.Setenv("TEST_FORGEJO_TOKEN", "secret") // serial: t.Setenv panics under t.Parallel()
 	path := writeConfig(t, `
