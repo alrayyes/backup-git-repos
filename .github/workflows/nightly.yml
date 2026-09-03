@@ -9,7 +9,7 @@ jobs:
   gitlab:
     name: Integration (GitLab)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -29,17 +29,20 @@ jobs:
           go-version-file: go.mod
 
       # go test defaults to a 10 minute deadline for the whole binary.
-      # TestContainerBoots, TestListerContract and TestMirrorSync each boot
-      # their own GitLab CE container from scratch (~4-5 minutes apiece), so
-      # three of them run sequentially past that default well before any of
-      # them actually hang -- confirmed by reproducing the same request
-      # manually against a freshly booted container, where it answered in
-      # under a second. 35m leaves headroom under the job's 45 minute cap
-      # for checkout/setup/cleanup.
+      # TestContainerBoots, TestListerContract, TestMirrorSync and the
+      # release/pull-request exporter contract tests each boot their own
+      # GitLab CE container from scratch (~4-5 minutes apiece), so several of
+      # them run sequentially past that default well before any of them
+      # actually hang -- confirmed by reproducing the same request manually
+      # against a freshly booted container, where it answered in under a
+      # second. A run with the release and pull-request exporters' tests
+      # included took 34m30s against the previous 35m/45m budget -- right at
+      # the edge, not comfortably under it -- so both are raised here rather
+      # than only when the next test added tips it over.
       #
       # The three LFS tests are skipped: GitLab CE's LFS object-storage
       # backend isn't reliably warm by the time the container's health check
       # passes, so a push racing right after "ready" flakes with an LFS
       # client error before Mirror.Sync itself is ever exercised. See #142.
       - name: Test
-        run: go test -tags="integration gitlab" -race -v -timeout=35m -skip 'TestMirrorSyncFetchesLFSContent|TestMirrorSyncFetchesLFSContentOnUpdate|TestMirrorSyncSkipsLFSForOrdinaryRepo' ./internal/gitlab/...
+        run: go test -tags="integration gitlab" -race -v -timeout=45m -skip 'TestMirrorSyncFetchesLFSContent|TestMirrorSyncFetchesLFSContentOnUpdate|TestMirrorSyncSkipsLFSForOrdinaryRepo' ./internal/gitlab/...

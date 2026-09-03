@@ -96,3 +96,46 @@ func TestReleaseExporterUnit(t *testing.T) {
 	require.NoDirExists(t, filepath.Join(dir, "v0.9.0", "assets"),
 		"a release with no uploaded assets must create no assets directory")
 }
+
+// htmlRedirectReleaseServer answers an asset download with a 200 OK carrying
+// an HTML sign-in page instead of the asset -- what GitLab's uploads route
+// actually returns when the request has no browser session, since it
+// redirects there and the redirect target itself answers 200.
+func htmlRedirectReleaseServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/asset-content") {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte("<html><body>sign in</body></html>"))
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `[
+			{"tag_name":"v1.0.0","name":"v1.0.0","description":"release notes","author":{"username":"alice"},
+			 "created_at":"2026-01-01T00:00:00Z","released_at":"2026-01-02T00:00:00Z",
+			 "assets":{"links":[{"name":"artifact.txt","url":%q,"direct_asset_url":%q}]}}
+		]`, srv.URL+"/asset-content", srv.URL+"/asset-content")
+	}))
+
+	return srv
+}
+
+func TestReleaseExporterUnitRejectsHTMLAsset(t *testing.T) {
+	t.Parallel()
+
+	srv := htmlRedirectReleaseServer(t)
+	defer srv.Close()
+
+	client, err := gitlab.New(srv.URL, "unused")
+	require.NoError(t, err)
+
+	exp := gitlab.NewReleaseExporter(client)
+	err = exp.Export(t.Context(), backup.Repo{Path: "team/repo"}, t.TempDir())
+	require.Error(t, err,
+		"a 200 OK carrying an HTML sign-in page is an unauthenticated redirect, not the asset, and must not be written out as one")
+	assert.Contains(t, err.Error(), "html")
+}
