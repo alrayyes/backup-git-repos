@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/alrayyes/backup-git-repos/compare/v1.12.2...v1.13.0) (2026-09-03)
+
+
+### Features
+
+* **config:** support token_command for every forge credential ([#155](https://github.com/alrayyes/backup-git-repos/issues/155)) ([caff135](https://github.com/alrayyes/backup-git-repos/commit/caff135142e83775ccf819f7abeac4a9de2164fb))
+
+
+### Bug Fixes
+
+* **gitlab:** fix nightly integration test failures ([#148](https://github.com/alrayyes/backup-git-repos/issues/148)) ([6023336](https://github.com/alrayyes/backup-git-repos/commit/602333614b0864bf937be45c72f479fff04edd69))
+
 ## [1.12.2](https://github.com/alrayyes/backup-git-repos/compare/v1.12.1...v1.12.2) (2026-09-02)
 
 
