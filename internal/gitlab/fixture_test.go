@@ -307,7 +307,7 @@ func (f fixture) waitForMergeable(t *testing.T, mrIID int) {
 		}
 		f.do(t, http.MethodGet, fmt.Sprintf("/api/v4/projects/team%%2Factive-repo/merge_requests/%d", mrIID), nil, &mr)
 
-		if mr.DetailedMergeStatus == "mergeable" || mr.MergeStatus == "can_be_merged" {
+		if mr.DetailedMergeStatus == "mergeable" {
 			return
 		}
 

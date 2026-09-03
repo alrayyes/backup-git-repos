@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
@@ -126,6 +127,17 @@ func (e *ReleaseExporter) downloadAsset(ctx context.Context, projectPath, dir, t
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("download gitlab release asset %s for %s: %w: %d",
 			l.Name, projectPath, httperr.ErrUnexpectedStatus, resp.StatusCode)
+	}
+
+	// GitLab's uploads-based download URLs (as opposed to a direct external
+	// link) are a web route authenticated by browser session, not the
+	// PRIVATE-TOKEN header this client sends -- an unauthenticated request
+	// gets silently redirected to the sign-in page, which itself answers 200
+	// OK, so the status check above never catches it. The sign-in page is
+	// the only thing on this path that's ever HTML; a real asset never is.
+	if ct := resp.Header.Get("Content-Type"); strings.HasPrefix(ct, "text/html") {
+		return 0, fmt.Errorf("download gitlab release asset %s for %s: %w: got html, likely the sign-in page",
+			l.Name, projectPath, httperr.ErrUnauthenticatedRedirect)
 	}
 
 	size, err := backup.WriteReleaseAsset(dir, tagName, l.Name, resp.Body)
