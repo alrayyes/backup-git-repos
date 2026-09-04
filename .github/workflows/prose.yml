@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Vale
         run: |
-          curl -sSLf -o vale.tar.gz \
+          curl -sSLf --retry 3 --retry-delay 5 -o vale.tar.gz \
             "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
           tar -xzf vale.tar.gz vale
           sudo install -m 0755 vale /usr/local/bin/vale
@@ -60,7 +60,7 @@ jobs:
 
       - name: Install ltex-cli-plus
         run: |
-          curl -sSLf -o ltex.tar.gz \
+          curl -sSLf --retry 3 --retry-delay 5 -o ltex.tar.gz \
             "https://github.com/ltex-plus/ltex-ls-plus/releases/download/${LTEX_VERSION}/ltex-ls-plus-${LTEX_VERSION}-linux-x64.tar.gz"
           tar -xzf ltex.tar.gz
           echo "$PWD/ltex-ls-plus-${LTEX_VERSION}/bin" >> "$GITHUB_PATH"
