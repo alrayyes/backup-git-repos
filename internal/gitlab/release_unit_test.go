@@ -124,6 +124,62 @@ func htmlRedirectReleaseServer(t *testing.T) *httptest.Server {
 	return srv
 }
 
+// uploadsAPIReleaseServer answers a release asset link pointing at GitLab's
+// project-uploads web route (".../uploads/<secret>/<name>") the same way a
+// real GitLab instance does: the web route itself always answers the HTML
+// sign-in page, and only the token-authenticated API route
+// (/api/v4/projects/:id/uploads/:secret/:name) serves the real content --
+// so this only passes if resolveAssetURL actually rewrites onto the API
+// route rather than fetching the URL GitLab handed back as-is.
+func uploadsAPIReleaseServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/api/v4/projects/") && strings.Contains(r.URL.Path, "/uploads/"):
+			assert.Equal(t, "unused", r.Header.Get("PRIVATE-TOKEN"))
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write([]byte(releaseAssetContent))
+
+			return
+		case strings.Contains(r.URL.Path, "/uploads/"):
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte("<html><body>sign in</body></html>"))
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `[
+			{"tag_name":"v1.0.0","name":"v1.0.0","description":"release notes","author":{"username":"alice"},
+			 "created_at":"2026-01-01T00:00:00Z","released_at":"2026-01-02T00:00:00Z",
+			 "assets":{"links":[{"name":"artifact.txt","url":%q,"direct_asset_url":%q}]}}
+		]`, srv.URL+"/team/repo/uploads/deadbeef/artifact.txt", srv.URL+"/team/repo/uploads/deadbeef/artifact.txt")
+	}))
+
+	return srv
+}
+
+func TestReleaseExporterUnitUsesUploadsAPIRoute(t *testing.T) {
+	t.Parallel()
+
+	srv := uploadsAPIReleaseServer(t)
+	defer srv.Close()
+
+	client, err := gitlab.New(srv.URL, "unused")
+	require.NoError(t, err)
+
+	exp := gitlab.NewReleaseExporter(client)
+	dir := t.TempDir()
+	require.NoError(t, exp.Export(t.Context(), backup.Repo{Path: "team/repo"}, dir),
+		"a release asset link pointing at gitlab's uploads web route must be fetched through the token-authenticated uploads API route instead")
+
+	content, err := os.ReadFile(filepath.Join(dir, "v1.0.0", "assets", "artifact.txt"))
+	require.NoError(t, err)
+	require.Equal(t, releaseAssetContent, string(content))
+}
+
 func TestReleaseExporterUnitRejectsHTMLAsset(t *testing.T) {
 	t.Parallel()
 

@@ -5,12 +5,21 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
 	backup "github.com/alrayyes/backup-git-repos"
 	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
+
+// uploadsPathPattern matches the trailing "/uploads/<secret>/<filename>" GitLab appends to a
+// project's own path for a file uploaded through POST .../uploads -- the same route markdown
+// image attachments use, and the shape a release link built from one comes back as, whether in
+// its own "url" field or in "direct_asset_url". That route is a web page gated by a browser
+// session, not PRIVATE-TOKEN -- see the comment on resolveAssetURL for how that's worked
+// around.
+var uploadsPathPattern = regexp.MustCompile(`/uploads/[^/]+/[^/]+$`)
 
 // ReleaseExporter exports a project's releases, their notes, and their
 // uploaded assets from a self-hosted GitLab instance, using the same
@@ -107,7 +116,7 @@ func (e *ReleaseExporter) exportRelease(ctx context.Context, projectPath, dir st
 }
 
 func (e *ReleaseExporter) downloadAsset(ctx context.Context, projectPath, dir, tagName string, l glAssetLink) (int64, error) {
-	assetURL, err := e.resolveAssetURL(l)
+	assetURL, err := e.resolveAssetURL(projectPath, l)
 	if err != nil {
 		return 0, fmt.Errorf("download gitlab release asset %s for %s: %w", l.Name, projectPath, err)
 	}
@@ -159,14 +168,34 @@ func (e *ReleaseExporter) downloadAsset(ctx context.Context, projectPath, dir, t
 // can point anywhere -- an external link someone manually attached to the
 // release -- so it's used as-is rather than assumed to live on this
 // instance.
-func (e *ReleaseExporter) resolveAssetURL(l glAssetLink) (string, error) {
-	if l.DirectAssetURL == "" {
-		return l.URL, nil
+//
+// Either one can come back matching uploadsPathPattern: a release asset
+// someone attached by uploading a file directly (rather than through the
+// generic package registry) resolves to that same web-only path in both
+// fields, confirmed live -- GitLab never computes a distinct
+// direct_asset_url for an upload-backed link the way it does for a
+// package-registry one. GitLab's own API docs (project_markdown_uploads)
+// describe a second route serving the identical upload that does accept
+// PRIVATE-TOKEN -- GET /api/v4/projects/:id/uploads/:secret/:filename -- so
+// a matching path is rewritten onto that route instead of fetched as the
+// literal URL GitLab handed back.
+func (e *ReleaseExporter) resolveAssetURL(projectPath string, l glAssetLink) (string, error) {
+	candidate := l.URL
+	if l.DirectAssetURL != "" {
+		candidate = l.DirectAssetURL
 	}
 
-	parsed, err := url.Parse(l.DirectAssetURL)
+	parsed, err := url.Parse(candidate)
 	if err != nil {
-		return "", fmt.Errorf("parse asset url %s: %w", l.DirectAssetURL, err)
+		return "", fmt.Errorf("parse asset url %s: %w", candidate, err)
+	}
+
+	if uploadsPath := uploadsPathPattern.FindString(parsed.Path); uploadsPath != "" {
+		return e.Client.BaseURL.JoinPath("/api/v4/projects/" + url.PathEscape(projectPath) + uploadsPath).String(), nil
+	}
+
+	if l.DirectAssetURL == "" {
+		return l.URL, nil
 	}
 
 	resolved := *e.Client.BaseURL
