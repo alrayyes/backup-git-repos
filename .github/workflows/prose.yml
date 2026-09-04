@@ -11,7 +11,6 @@ on:
 # the two are answered differently.
 env:
   VALE_VERSION: "3.17.1"
-  LTEX_VERSION: "18.7.0"
 
 permissions:
   contents: read
@@ -57,15 +56,16 @@ jobs:
     name: LTeX (grammar)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The release is ~300MB and carries its own Java. This image is built
+    # once by alrayyes/ltex-cli-plus rather than fetched fresh on every run,
+    # so ltex-cli-plus is already on PATH and there is nothing left to fetch.
+    container:
+      image: ghcr.io/alrayyes/ltex-cli-plus@sha256:bf8c54087ad5418da57d9ef5a9604b4dd70aa0737fa0d732b2a2d5cd81e64c18 # 18.7.0
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The image carries the CLI and nothing else - checkout needs git.
+      - run: apt-get update && apt-get install -y --no-install-recommends git
 
-      - name: Install ltex-cli-plus
-        run: |
-          curl -sSLf --retry 3 --retry-delay 5 -o ltex.tar.gz \
-            "https://github.com/ltex-plus/ltex-ls-plus/releases/download/${LTEX_VERSION}/ltex-ls-plus-${LTEX_VERSION}-linux-x64.tar.gz"
-          tar -xzf ltex.tar.gz
-          echo "$PWD/ltex-ls-plus-${LTEX_VERSION}/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # ltex-cli-plus exits 3 when it finds something, not 1, so a job that
       # tested for a specific code would pass a failing document.
@@ -74,11 +74,4 @@ jobs:
       # write, and CHANGELOG.md is generated text that belongs to nobody's
       # grammar checker. Add new pages here as they appear.
       - name: Run LTeX
-        env:
-          # The archive ships its own JDK 21, which is the reason for taking the
-          # -linux-x64 build, but its launcher only falls back to that JDK when
-          # JAVA_HOME is empty. GitHub runners preset JAVA_HOME to Java 17, and
-          # LTeX is compiled for 21, so it dies with UnsupportedClassVersionError
-          # unless we clear it. Nothing else in this job wants Java.
-          JAVA_HOME: ""
         run: ltex-cli-plus --client-configuration=.ltex.json README.md CONTRIBUTING.md
