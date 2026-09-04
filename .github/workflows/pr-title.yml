@@ -10,6 +10,12 @@ on:
 permissions:
   pull-requests: read
 
+# github.ref on a pull_request_target event is the base branch, not the PR
+# head, so it can't tell two PRs' runs apart -- key on the PR number instead.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   lint-pr-title:
     name: Semantic PR title
