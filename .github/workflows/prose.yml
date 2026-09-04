@@ -13,6 +13,9 @@ env:
   VALE_VERSION: "3.17.1"
   LTEX_VERSION: "18.7.0"
 
+permissions:
+  contents: read
+
 jobs:
   vale:
     name: Vale (style)
