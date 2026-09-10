@@ -1,19 +1,26 @@
-# release-please opens (and force-pushes updates to) the release pull
-# request. release.yml here uses RELEASE_TOKEN, not the default
-# GITHUB_TOKEN (releases.md's action_required wall), so the PR is authored
-# as alrayyes, not github-actions[bot] -- gate on either actor. The commits
-# on it are exactly what already landed on main through their own reviewed
-# pull requests -- this PR itself is only a version bump and a changelog
-# entry, nothing left for a human to read here. Same mechanism as
-# dependabot-auto-merge.yml: gate on the actor and branch, wait for the
-# same required checks every other pull request waits for, then arm
-# auto-merge the way a human would from the UI.
+# release-please has no built-in auto-merge, same gap as Dependabot, same
+# fix: gate on the label release-please itself applies, wait for the same
+# checks every other pull request waits for, then arm auto-merge the same
+# way a human would from the UI. Label rather than actor: release.yml uses
+# RELEASE_TOKEN to dodge the action_required wall, so this PR is opened as
+# alrayyes, not github-actions[bot] -- an actor check has to name that
+# identity explicitly and breaks again if it ever changes, where the label
+# release-please itself applies doesn't care who opened the PR at all.
+# Same pattern as hush-hush-action's and washy-washy-cli's
+# release-auto-merge.yml.
 #
 # pull_request, not pull_request_target: this PR's branch lives on the
 # repo itself, never a fork, so there's no untrusted checkout to guard
-# against, and pull_request_target would trade away the elevated
-# GITHUB_TOKEN permissions GitHub grants a bot-actor'd pull_request event
-# for nothing.
+# against.
+#
+# GH_TOKEN below has to be RELEASE_TOKEN, not GITHUB_TOKEN: the merge
+# commit this produces on main is itself GITHUB_TOKEN-authored if it
+# isn't, and GitHub's anti-recursion guard then silently stops that merge
+# from triggering release.yml (or any other workflow) at all, so the
+# release would show "merged" but never actually get tagged or built.
+# Confirmed live on washy-washy-cli (#188) and reproduced on
+# hush-hush-action: a GITHUB_TOKEN auto-merge produced zero workflow runs
+# on the merge commit.
 name: release-auto-merge
 
 on: pull_request
@@ -24,13 +31,15 @@ permissions:
 
 jobs:
   auto-merge:
-    if: |
-      (github.actor == 'github-actions[bot]' || github.actor == 'alrayyes') &&
-      startsWith(github.head_ref, 'release-please--')
+    # release-please labels its own pull request "autorelease: pending"
+    # and re-labels it "autorelease: tagged" once merged -- checking the
+    # label rather than the actor, since the PR is opened by whichever
+    # identity runs googleapis/release-please-action, not a bot account.
+    if: "contains(github.event.pull_request.labels.*.name, 'autorelease: pending')"
     runs-on: ubuntu-24.04
     steps:
       - name: Enable auto-merge for the release pull request
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
