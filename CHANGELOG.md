@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.13.1](https://github.com/alrayyes/backup-git-repos/compare/v1.13.0...v1.13.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **ci:** gate release-auto-merge on the release-please label, not actor ([#178](https://github.com/alrayyes/backup-git-repos/issues/178)) ([46eaae9](https://github.com/alrayyes/backup-git-repos/commit/46eaae9b25230d34f6a541434d5dacd22e95bb37)), closes [#176](https://github.com/alrayyes/backup-git-repos/issues/176)
+* **ci:** widen release-auto-merge's actor gate to accept alrayyes ([#177](https://github.com/alrayyes/backup-git-repos/issues/177)) ([444e704](https://github.com/alrayyes/backup-git-repos/commit/444e704326359ae7af74e37676e84ac7bf2968c5)), closes [#176](https://github.com/alrayyes/backup-git-repos/issues/176)
+* **gitlab:** download upload-backed release assets through the token API route ([#158](https://github.com/alrayyes/backup-git-repos/issues/158)) ([3718093](https://github.com/alrayyes/backup-git-repos/commit/37180930dce65d96c06b2a1341b14a759dd7099b)), closes [#157](https://github.com/alrayyes/backup-git-repos/issues/157)
+* smol-toml override and report_type typo ([#174](https://github.com/alrayyes/backup-git-repos/issues/174)) ([e4c8836](https://github.com/alrayyes/backup-git-repos/commit/e4c88366be1da9906bf670bbc79687acd8d6f994))
+
 ## [1.13.0](https://github.com/alrayyes/backup-git-repos/compare/v1.12.2...v1.13.0) (2026-09-03)
 
 
