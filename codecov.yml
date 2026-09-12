@@ -5,6 +5,8 @@
 ignore:
   - "cmd/backup-git-repos/main.go"
 
+comment: false
+
 coverage:
   status:
     project: off
