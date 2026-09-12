@@ -4,7 +4,7 @@ go 1.26.6
 
 require (
 	github.com/goccy/go-yaml v1.19.2
-	github.com/moby/moby/api v1.55.0
+	github.com/moby/moby/api v1.56.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
