@@ -25,7 +25,7 @@
           src = ./.;
           subPackages = [ "cmd/backup-git-repos" ];
 
-          vendorHash = "sha256-q1dnpDN2/9IEy/Z1X9lz6aPepyvxhBK6r2gy/QQbxdo=";
+          vendorHash = "sha256-5ZFO8WDwGZhYwXyUJxXtH4lZb1EwpLtEhm9FjhhEtHk=";
 
           ldflags = [
             "-s"
