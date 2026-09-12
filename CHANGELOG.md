@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.5](https://github.com/alrayyes/backup-git-repos/compare/v1.13.4...v1.13.5) (2026-09-12)
+
+
+### Bug Fixes
+
+* **deps:** use Dependabot's bun ecosystem instead of npm ([#199](https://github.com/alrayyes/backup-git-repos/issues/199)) ([9d4e850](https://github.com/alrayyes/backup-git-repos/commit/9d4e850267dbd588f0ea3058bc17662e41c943ed))
+
 ## [1.13.4](https://github.com/alrayyes/backup-git-repos/compare/v1.13.3...v1.13.4) (2026-09-12)
 
 
