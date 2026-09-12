@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 )
 
 // fakeIssueExporter is an in-memory MetadataExporter for MetadataIssues,

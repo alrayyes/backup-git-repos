@@ -5,7 +5,7 @@ package gitlab_test
 import (
 	"testing"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 	"github.com/alrayyes/backup-git-repos/internal/gitlab"
 	"github.com/stretchr/testify/require"
 )

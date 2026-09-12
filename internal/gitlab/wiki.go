@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 )
 
 // wikiPage is an item from GET /api/v4/projects/:id/wikis. Only its
