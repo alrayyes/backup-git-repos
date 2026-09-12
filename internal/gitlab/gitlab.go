@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strconv"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 	"github.com/alrayyes/backup-git-repos/internal/httpauth"
 	"github.com/alrayyes/backup-git-repos/internal/httperr"
 	"golang.org/x/sync/errgroup"
