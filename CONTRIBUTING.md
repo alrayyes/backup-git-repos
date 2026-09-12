@@ -133,6 +133,26 @@ database over the network on every run, the same reason LTeX stays out of the
 hooks below. CI runs it on every push; run `govulncheck ./...` yourself
 before pushing a dependency change.
 
+Installing and running the `.deb`/`.rpm`/Nix flake it builds is a third.
+`goreleaser check` in CI already validates `.goreleaser.yaml` on every push,
+but only for syntax: it never builds or installs anything, so a broken
+package would still pass it. `packaging.yml` catches that instead, gated to
+runs where a pull request touches `.goreleaser.yaml` or `flake.nix`, since
+building every package format on every unrelated change would slow CI down
+for no reason. Reproduce it yourself before touching either file:
+
+```bash
+# Build the .deb/.rpm without a real release
+bun run goreleaser -- release --snapshot --clean --skip=docker,aur
+
+# Install and run one, the same way CI does, in a real (non-slim) base image
+docker run --rm -v "$PWD/dist:/dist:ro" debian:trixie \
+  bash -c 'dpkg -i /dist/backup-git-repos_*_linux_amd64.deb && backup-git-repos version'
+
+# Nix
+nix flake check && nix build
+```
+
 The hooks and the GitHub Actions workflows run the same commands on purpose.
 The hook catches a problem early; CI is the gate you can't skip.
 

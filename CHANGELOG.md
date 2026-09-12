@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.13.4](https://github.com/alrayyes/backup-git-repos/compare/v1.13.3...v1.13.4) (2026-09-12)
+
+
+### Bug Fixes
+
+* **nix:** update flake.nix's stale vendorHash ([#197](https://github.com/alrayyes/backup-git-repos/issues/197)) ([3e6440c](https://github.com/alrayyes/backup-git-repos/commit/3e6440c288104667eab640d901a909f69ce9aba1))
+
+## [1.13.3](https://github.com/alrayyes/backup-git-repos/compare/v1.13.2...v1.13.3) (2026-09-12)
+
+
+### Bug Fixes
+
+* **deps:** let the goreleaser Docker wrapper fetch a newer Go toolchain ([#198](https://github.com/alrayyes/backup-git-repos/issues/198)) ([a9c74b9](https://github.com/alrayyes/backup-git-repos/commit/a9c74b903808f35e0a418aa67e03b2a6ae9f05ab))
+
 ## [1.13.2](https://github.com/alrayyes/backup-git-repos/compare/v1.13.1...v1.13.2) (2026-09-12)
 
 
