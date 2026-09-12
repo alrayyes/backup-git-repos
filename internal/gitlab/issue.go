@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 )
 
 // IssueExporter exports a project's issues and their comments from a

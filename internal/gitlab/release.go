@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 	"github.com/alrayyes/backup-git-repos/internal/httperr"
 )
 

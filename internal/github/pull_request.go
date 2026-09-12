@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 )
 
 // PullRequestExporter exports a repository's pull requests and their review

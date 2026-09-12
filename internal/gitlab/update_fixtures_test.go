@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"testing"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 	"github.com/stretchr/testify/require"
 )
 

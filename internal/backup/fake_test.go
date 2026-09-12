@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	backup "github.com/alrayyes/backup-git-repos"
+	"github.com/alrayyes/backup-git-repos/internal/backup"
 )
 
 // fakeLister is an in-memory Lister seeded with the same fixture set every
