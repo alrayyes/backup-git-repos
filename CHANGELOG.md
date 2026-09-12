@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.13.2](https://github.com/alrayyes/backup-git-repos/compare/v1.13.1...v1.13.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/moby/go-archive ([#186](https://github.com/alrayyes/backup-git-repos/issues/186)) ([3e1dcf0](https://github.com/alrayyes/backup-git-repos/commit/3e1dcf04d108026b6a6ec31ab5cd3872e93ceab8))
+* **deps:** bump github.com/moby/moby/api from 1.55.0 to 1.56.0 ([#182](https://github.com/alrayyes/backup-git-repos/issues/182)) ([6b5e5e1](https://github.com/alrayyes/backup-git-repos/commit/6b5e5e1388836325a7405e3f30e0132405a6ece2))
+* **deps:** bump golang.org/x/sync from 0.22.0 to 0.23.0 ([#180](https://github.com/alrayyes/backup-git-repos/issues/180)) ([4eed493](https://github.com/alrayyes/backup-git-repos/commit/4eed49323dfbc982b3085ab69cab726a5975682a))
+* **deps:** bump golang.org/x/term from 0.45.0 to 0.46.0 ([#183](https://github.com/alrayyes/backup-git-repos/issues/183)) ([572c243](https://github.com/alrayyes/backup-git-repos/commit/572c243220170c2189c5f4edc5f7ecb95dc0658a))
+* **github:** use GitHub's stock labels in issue templates ([#188](https://github.com/alrayyes/backup-git-repos/issues/188)) ([194f635](https://github.com/alrayyes/backup-git-repos/commit/194f63549b1ec2fc3c7199e400e5d8bbfda78d56))
+
 ## [1.13.1](https://github.com/alrayyes/backup-git-repos/compare/v1.13.0...v1.13.1) (2026-09-11)
 
 
