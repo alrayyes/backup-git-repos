@@ -21,9 +21,14 @@ updates:
       prefix-development: "fix"
       include: "scope"
 
-  # npm/bun dependencies. Tooling only - package.json exists for commitlint/biome/etc,
-  # nothing here ships in the built binary.
-  - package-ecosystem: "npm"
+  # bun dependencies. Tooling only - package.json exists for commitlint/biome/etc,
+  # nothing here ships in the built binary. "bun", not "npm": the npm-ecosystem
+  # updater doesn't understand bun.lock and only ever edits package.json,
+  # which fails every job running `bun install --frozen-lockfile` (#195). The
+  # dedicated bun ecosystem has no security-update support, unlike npm's, but
+  # these are devDependencies only - `bun audit` in CI already flags a
+  # vulnerable pin on every push, so there's nothing this loses in practice.
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
