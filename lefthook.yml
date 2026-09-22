@@ -109,8 +109,9 @@ commit-msg:
 #
 # The container suite is the deliberate omission. `go test -tags=integration`
 # boots a real Forgejo, which is more than a push should wait on; CI runs it on
-# every pull request. `-tags='integration gitlab'` boots GitLab CE and is
-# nightly-only. Run either by hand when you have touched an adapter.
+# every pull request. `-tags='integration gitlab'` boots GitLab CE and isn't
+# run in CI at all -- see CONTRIBUTING.md. Run either by hand when you have
+# touched an adapter.
 #
 # ltex-cli-plus is the other omission: a 305 MB download shipping its own Java
 # is more than a push should wait on. CI runs it, and the editor runs the same
