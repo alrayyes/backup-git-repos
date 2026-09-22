@@ -69,8 +69,15 @@ push.
   this lane are served from recorded API fixtures in `testdata/`, not a live
   GitLab or GitHub.com. CI runs this on every pull request.
 - `go test -tags='integration gitlab' ./internal/gitlab/...` — boots a real
-  GitLab CE container, which wants several minutes and several gigabytes. CI
-  runs this nightly and on `workflow_dispatch`, never on a pull request.
+  GitLab CE container, which wants several minutes and several gigabytes.
+  **Not run in CI at all.** A dedicated nightly workflow used to run this on
+  a schedule; it was removed after six separate incidents (#23, #123, #142,
+  #147, #157, #213) in under a month, none of them a real regression in this
+  project's own code — a testcontainers race, an async-diff timing quirk, an
+  unauthenticated-download edge case, and finally an upstream GitLab CE
+  behavior change the pinned image picked up. A scheduled job nobody's
+  watching just accumulates red runs instead of catching anything. Run this
+  by hand against a live container whenever you change the GitLab adapter.
 
 GitHub.com has no self-hosted equivalent to boot, so its recorded fixtures in
 `internal/github/testdata/` are hand-authored against GitHub's REST API
@@ -93,8 +100,8 @@ The contract suite lives once, in `testing.go`, and runs against the fake,
 the Forgejo adapter, the GitLab adapter, and the GitHub adapter alike — the
 thing that keeps a handwritten fake honest is a real dependency checked
 against the same assertions. When the GitLab fixtures drift from what the
-live API actually returns, the nightly run's `-update` flag refreshes them
-and the diff shows what changed.
+live API actually returns, running the `gitlab`-tagged suite by hand with its
+`-update` flag refreshes them and the diff shows what changed.
 
 Acceptance tests keep the specification separate from the driver: what the
 tool does, in domain terms, doesn't know whether it's talking to a fake or a
