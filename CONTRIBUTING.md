@@ -75,7 +75,7 @@ push.
   #147, #157, #213) in under a month, none of them a real regression in this
   project's own code — a testcontainers race, an async-diff timing quirk, an
   unauthenticated-download edge case, and finally an upstream GitLab CE
-  behavior change the pinned image picked up. A scheduled job nobody's
+  behaviour change the pinned image picked up. A scheduled job nobody's
   watching just accumulates red runs instead of catching anything. Run this
   by hand against a live container whenever you change the GitLab adapter.
 
