@@ -8,7 +8,7 @@
         "@biomejs/biome": "2.5.13",
         "@commitlint/cli": "21.2.3",
         "@commitlint/config-conventional": "21.2.2",
-        "@vvago/vale": "3.21.0",
+        "@vvago/vale": "3.22.0",
         "lefthook": "2.1.14",
         "markdownlint-cli2": "0.23.2",
         "prettier": "3.9.8",
@@ -148,7 +148,7 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "@vvago/vale": ["@vvago/vale@3.21.0", "", { "dependencies": { "fs-extra": "^11.4.0", "tar": "^7.5.15", "yauzl": "^3.4.0" }, "bin": { "vale": "bin/vale.cjs" } }, "sha512-aJfUv3BJEE/VI8Yb/j5W7iy9chAAsauzKQBMvV90UdXrye9hLxEGDx7XzoWj28wlqR/VZeoLeVFJRDPwRBf8sw=="],
+    "@vvago/vale": ["@vvago/vale@3.22.0", "", { "dependencies": { "fs-extra": "^11.4.0", "tar": "^7.5.15", "yauzl": "^3.4.0" }, "bin": { "vale": "bin/vale.cjs" } }, "sha512-a4/WCFC74QQ/MyhX8K97Ie8VWGeCTd+qg2qVV+BAWx8CqvE0YQxYpmpvDkjH21tQcfFV6sSl4VQVe8nwaXi/YQ=="],
 
     "ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 
