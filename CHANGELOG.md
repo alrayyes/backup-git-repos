@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.6](https://github.com/alrayyes/backup-git-repos/compare/v1.13.5...v1.13.6) (2026-09-26)
+
+
+### Bug Fixes
+
+* **deps:** bump alpine from 3.24.1 to 3.24.2 ([#215](https://github.com/alrayyes/backup-git-repos/issues/215)) ([861b934](https://github.com/alrayyes/backup-git-repos/commit/861b934d18788f339a071927f4293ac638a5b6d8))
+
 ## [1.13.5](https://github.com/alrayyes/backup-git-repos/compare/v1.13.4...v1.13.5) (2026-09-12)
 
 
