@@ -33,10 +33,20 @@ jobs:
       # Patch and minor only — dependabot.yml already groups those two
       # together for the same reason. A major stays a pull request someone
       # reads, the same as any other breaking change would.
-      - name: Enable auto-merge for patch and minor updates
+      #
+      # nix is the one ecosystem exempted from that gate: a flake.lock input
+      # bump is a moving commit pin, not a versioned release, so
+      # fetch-metadata always reports update-type: null for it (confirmed on
+      # #212 and #221) and the patch/minor check above can never match —
+      # every nixpkgs/flake-utils bump silently stayed manual review forever.
+      # There's no "major" concept for a commit pin to gate on in the first
+      # place, and dependabot.yml already calls this ecosystem "alternate
+      # packaging only" tooling, not what ships.
+      - name: Enable auto-merge for patch and minor updates, and all nix updates
         if: |
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
-          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.package-ecosystem == 'nix'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
