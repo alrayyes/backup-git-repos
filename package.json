@@ -33,7 +33,7 @@
     "@vvago/vale": "3.21.0",
     "lefthook": "2.1.14",
     "markdownlint-cli2": "0.23.2",
-    "prettier": "3.9.6",
+    "prettier": "3.9.8",
     "sort-package-json": "4.0.0"
   },
   "trustedDependencies": [
