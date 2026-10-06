@@ -71,8 +71,8 @@ push.
 - `go test -tags='integration gitlab' ./internal/gitlab/...` — boots a real
   GitLab CE container, which wants several minutes and several gigabytes.
   **Not run in CI at all.** A dedicated nightly workflow used to run this on
-  a schedule; it was removed after six separate incidents (#23, #123, #142,
-  #147, #157, #213) in under a month, none of them a real regression in this
+  a schedule; it was removed after six separate incidents in under a
+  month, none of them a real regression in this
   project's own code — a testcontainers race, an async-diff timing quirk, an
   unauthenticated-download edge case, and finally an upstream GitLab CE
   behaviour change the pinned image picked up. A scheduled job nobody's
