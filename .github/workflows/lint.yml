@@ -76,10 +76,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # GHSA-vfj7-8cjw-p6xm (braces) has no patched release. It's reached only
+      # through markdownlint-cli2's globbing of this repo's own files, never
+      # untrusted input. Tracked in #231; drop the ignore once braces ships a fix.
       - name: Run bun audit
         run: |
           for i in 1 2 3; do
-            bun audit && exit 0
+            bun audit --ignore GHSA-vfj7-8cjw-p6xm && exit 0
             echo "Attempt $i failed, retrying..." >&2
             sleep 5
           done
