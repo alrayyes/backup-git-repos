@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.7](https://github.com/alrayyes/backup-git-repos/compare/v1.13.6...v1.13.7) (2026-10-06)
+
+
+### Bug Fixes
+
+* **deps:** patch transitive advisories, ignore unpatched braces ([#232](https://github.com/alrayyes/backup-git-repos/issues/232)) ([3eb0933](https://github.com/alrayyes/backup-git-repos/commit/3eb093358ce94181825dd1a5550618a10812367b)), closes [#231](https://github.com/alrayyes/backup-git-repos/issues/231)
+
 ## [1.13.6](https://github.com/alrayyes/backup-git-repos/compare/v1.13.5...v1.13.6) (2026-09-26)
 
 
