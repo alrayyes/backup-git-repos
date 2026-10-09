@@ -21,3 +21,8 @@ styles/proselint/
 # Claude Code's own working state -- worktrees, installed skills, session
 # cache. Not repo content.
 /.claude/
+
+# Test and coverage output, assembled into site/ for Pages.
+/coverage.out
+/junit.xml
+/site/
