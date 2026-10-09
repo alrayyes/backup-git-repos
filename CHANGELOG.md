@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/alrayyes/backup-git-repos/compare/v1.13.8...v1.14.0) (2026-10-09)
+
+
+### Features
+
+* **ci:** publish test and coverage reports to Pages ([#235](https://github.com/alrayyes/backup-git-repos/issues/235)) ([6ec0a1c](https://github.com/alrayyes/backup-git-repos/commit/6ec0a1c56d61d0ee1b1ca73e9d3c985d2433a31b))
+
 ## [1.13.8](https://github.com/alrayyes/backup-git-repos/compare/v1.13.7...v1.13.8) (2026-10-09)
 
 
