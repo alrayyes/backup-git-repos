@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.8](https://github.com/alrayyes/backup-git-repos/compare/v1.13.7...v1.13.8) (2026-10-09)
+
+
+### Bug Fixes
+
+* **deps:** bump Go to 1.26.9 for the standard-library advisories ([#237](https://github.com/alrayyes/backup-git-repos/issues/237)) ([85b259a](https://github.com/alrayyes/backup-git-repos/commit/85b259a2b7847fc2886ed004da71fa74a929f4c0))
+
 ## [1.13.7](https://github.com/alrayyes/backup-git-repos/compare/v1.13.6...v1.13.7) (2026-10-06)
 
 
