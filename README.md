@@ -70,6 +70,18 @@ clone` produces anywhere else.
 Working on the tool needs more than running it does; that list is in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Reports
+
+Every push to `main` publishes its test and coverage reports:
+
+- [Test results](https://apis.ryankes.eu/backup-git-repos/reports/tests/junit.xml)
+  (JUnit XML)
+- [Coverage](https://apis.ryankes.eu/backup-git-repos/reports/coverage/) (HTML),
+  with [`coverage.xml`](https://apis.ryankes.eu/backup-git-repos/reports/coverage/coverage.xml)
+  (Cobertura) and
+  [`coverage.out`](https://apis.ryankes.eu/backup-git-repos/reports/coverage/coverage.out)
+  (Go profile) beside it
+
 ## Installation
 
 See [INSTALL.md](INSTALL.md) for every install option: the AUR, `.deb`/`.rpm`,
