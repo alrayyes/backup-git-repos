@@ -23,8 +23,9 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
   all run through the pinned images `rules/go.md`/`rules/go-lint.md`
   specify, so the toolchain version a hook runs with is never a question
   this machine's package manager gets a vote on.
-- **[Vale](https://vale.sh)**, optional. The hooks skip it when it isn't on
-  your `PATH`, and CI runs it either way.
+- **[Vale](https://vale.sh)**, installed by `bun install`. Run
+  `./node_modules/@vvago/vale/bin/vale.cjs sync` once to fetch the style
+  packages; without them the hooks fail rather than skip.
 - **[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)**,
   to check dependencies for known vulnerabilities before pushing one.
 
@@ -115,16 +116,17 @@ install` puts them in place and everyone gets the same version:
 
 - **pre-commit**: fixes staged files in place — `golangci-lint fmt` on Go,
   `prettier --write` then `markdownlint-cli2 --fix` on Markdown, `prettier
---write` on YAML, `biome check --write` on JSON. `Dockerfile` gets
-  [hadolint](https://github.com/hadolint/hadolint) instead, which has no
-  fixer, so it checks and fails rather than rewriting anything, plus a
-  real `docker build` proving it still builds (hadolint only reads it as
-  text). `golangci-lint fmt` and the `docker-build` check both need
-  Docker, same as the integration suites below.
+--write` on YAML, `biome check --write` on JSON, and Vale on Markdown
+  (check only). Every job gets only the staged files, so a half-finished file
+  elsewhere in the tree can't fail a commit. Nothing builds or fetches here:
+  hadolint, `goreleaser check` and the `docker-build` check run in
+  `pre-push` and CI. `golangci-lint fmt` needs Docker, same as the
+  integration suites below.
 - **commit-msg**: validates commit messages with
   [commitlint](https://commitlint.js.org/) against [Conventional
   Commits](https://www.conventionalcommits.org/).
-- **pre-push**: runs `golangci-lint run`, `go test -race ./...`,
+- **pre-push**: runs `golangci-lint run`, hadolint, `goreleaser check`, the Docker
+  build, `go test -race ./...`,
   `go mod tidy -diff`, `go mod edit -fmt` (all through the pinned Docker
   images `scripts/docker-go.sh`/`scripts/docker-golangci-lint.sh` wrap),
   then re-checks every preceding linter across the whole repository, so
@@ -168,8 +170,8 @@ The hook catches a problem early; CI is the gate you can't skip.
 [Vale](https://vale.sh) checks style: house voice, weasel words, corporate
 speak. It uses the Google and proselint packages, which `vale sync` downloads
 rather than the repo committing them, so install Vale and run `vale sync`
-once before `bun run lint:prose` works. The hooks run Vale when it's on
-`PATH` and quietly skip it otherwise; CI runs it either way and only warns,
+once before `bun run lint:prose` works. The commit hook lints staged Markdown and
+fails if the packages are missing; `pre-push` syncs them itself. CI runs it and only warns,
 because a merge blocked by an opinion teaches people to reach for
 `--no-verify`.
 

@@ -1,9 +1,11 @@
-# pre-commit fixes and restages; pre-push only checks. A hook that rewrote files
+# pre-commit judges only staged content: every job takes {staged_files}, fixers
+# write only to those and restage. Whole-tree, build and network work lives in
+# pre-push and CI. pre-commit fixes and restages; pre-push only checks. A hook that rewrote files
 # under a push would leave the pushed commit and your working tree disagreeing
 # about what was reviewed.
 
+# Sequential: several jobs write, and writers must not race each other.
 pre-commit:
-  parallel: true
   jobs:
     # `golangci-lint fmt` is the fixer in v2 -- gofumpt and goimports stopped
     # being linters and moved to the formatters block, so `run` is the check and
@@ -40,8 +42,10 @@ pre-commit:
             run: ./node_modules/.bin/prettier --write {staged_files}
             stage_fixed: true
 
+          # --no-globs: the config's own `globs` are otherwise added to the
+          # staged list, and markdownlint-cli2 would lint the whole tree.
           - name: markdownlint
-            run: ./node_modules/.bin/markdownlint-cli2 --fix {staged_files}
+            run: ./node_modules/.bin/markdownlint-cli2 --no-globs --fix {staged_files}
             stage_fixed: true
 
     # The YAML is Prettier's too -- Biome does not format it and nothing else
@@ -54,43 +58,18 @@ pre-commit:
       stage_fixed: true
 
     # Style and clarity. Vale has no fixer -- rewriting someone's sentence is not
-    # a hook's business -- so this reports and fails.
+    # a hook's business -- so this reports and fails. Staged files only.
     #
-    # Whole repo rather than the staged files, so the hook and CI run the
-    # identical command and cannot drift. It takes well under a second.
-    #
-    # The style packages are downloaded rather than committed, so a fresh clone
-    # has none. Sync once when they are missing rather than on every commit,
-    # which would put a network round trip in front of every `git commit`.
+    # The style packages are downloaded rather than committed. A commit hook
+    # does no network fetch, so with them missing Vale fails loudly; run
+    # `bun run vale.cjs sync` once. The pre-push and CI paths sync explicitly.
     - name: vale
       glob: "*.md"
-      run: |
-        if [ ! -d styles/proselint ]; then
-          ./node_modules/@vvago/vale/bin/vale.cjs sync
-        fi
-        ./node_modules/@vvago/vale/bin/vale.cjs --glob='!{styles,node_modules,.claude}/**' .
+      exclude: "{styles,node_modules,.claude}/**"
+      run: ./node_modules/@vvago/vale/bin/vale.cjs {staged_files}
 
-    - name: hadolint
-      glob: "Dockerfile"
-      run: bun run lint:dockerfile
-
-    # goreleaser check validates .goreleaser.yaml without cutting a release
-    # (rules/go-releases.md) -- wired into the same hook and CI step as
-    # everything else here rather than run ad hoc when the config changes.
-    - name: goreleaser-check
-      glob: ".goreleaser.{yml,yaml}"
-      run: bun run lint:goreleaser
-
-    # hadolint reads the Dockerfile as text and never builds it, so a
-    # syntactically fine Dockerfile can still fail to build
-    # (rules/containers.md). Scoped to the Dockerfile plus whatever its
-    # COPY instruction actually needs -- go.mod/go.sum for module
-    # resolution and every *.go file, since scripts/docker-build-check.sh
-    # cross-compiles the binary it stages, the same way goreleaser does
-    # for the real image.
-    - name: docker-build
-      glob: "{Dockerfile,**/*.go,go.mod,go.sum}"
-      run: bun run build:docker
+    # hadolint, goreleaser check and the Docker build take no file list or
+    # build the tree, so they run in pre-push and CI only.
 
     # Keeps package.json itself canonical the way Prettier does for
     # everything else -- see rules/javascript.md.
@@ -140,8 +119,13 @@ pre-push:
     - name: markdownlint
       run: ./node_modules/.bin/markdownlint-cli2
 
+    # Sync is explicit and loud: a failed download fails the push.
     - name: vale
-      run: ./node_modules/@vvago/vale/bin/vale.cjs --glob='!{styles,node_modules,.claude}/**' .
+      run: |
+        if [ ! -d styles/proselint ]; then
+          ./node_modules/@vvago/vale/bin/vale.cjs sync
+        fi
+        ./node_modules/@vvago/vale/bin/vale.cjs --glob='!{styles,node_modules,.claude}/**' .
 
     - name: hadolint
       run: bun run lint:dockerfile
