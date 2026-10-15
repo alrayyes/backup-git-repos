@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.1](https://github.com/alrayyes/backup-git-repos/compare/v1.14.0...v1.14.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **ci:** run release-auto-merge when the autorelease label is added ([#252](https://github.com/alrayyes/backup-git-repos/issues/252)) ([a786f23](https://github.com/alrayyes/backup-git-repos/commit/a786f23d5dfc0c4fda2916056acce5354dd2a618)), closes [#251](https://github.com/alrayyes/backup-git-repos/issues/251)
+* **deps:** bump github.com/moby/moby/api from 1.56.0 to 1.56.1 ([#243](https://github.com/alrayyes/backup-git-repos/issues/243)) ([0f30502](https://github.com/alrayyes/backup-git-repos/commit/0f3050295f5a1ce19e59c62c0e5a1cb5900d8bb2))
+* **deps:** bump golang.org/x/sync from 0.23.0 to 0.24.0 ([#242](https://github.com/alrayyes/backup-git-repos/issues/242)) ([b6f2c0a](https://github.com/alrayyes/backup-git-repos/commit/b6f2c0aeeb971c12c0d4086ed91ea4bdf68f24df))
+
 ## [1.14.0](https://github.com/alrayyes/backup-git-repos/compare/v1.13.8...v1.14.0) (2026-10-09)
 
 
