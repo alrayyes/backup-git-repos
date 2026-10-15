@@ -37,7 +37,7 @@ Running the tool needs Go and `git` on `PATH`. Working on it needs:
 # Docker image instead, never this one.
 go install golang.org/x/tools/cmd/goimports@latest
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
 
 # Installs the Node-shaped tooling and the git hooks: lefthook is pinned in
 # package.json, and the `prepare` script runs it for you.
@@ -139,8 +139,12 @@ change to an adapter.
 
 `govulncheck` is the other deliberate omission: it queries the vulnerability
 database over the network on every run, the same reason LTeX stays out of the
-hooks below. CI runs it on every push; run `govulncheck ./...` yourself
-before pushing a dependency change.
+hooks below. CI runs it on a pull request that touches Go code or `go.mod`,
+and fails only on a vulnerability that pull request adds over its base (`bun
+audit` does the same for `bun.lock`). `advisory-scan.yml` audits `main` daily
+and keeps one open `Dependency advisories` issue for what is already there;
+nothing is ignored. Run `govulncheck ./...` yourself before pushing a
+dependency change.
 
 Installing and running the `.deb`/`.rpm`/Nix flake it builds is a third.
 `goreleaser check` in CI already validates `.goreleaser.yaml` on every push,
