@@ -26,8 +26,8 @@ updates:
   # updater doesn't understand bun.lock and only ever edits package.json,
   # which fails every job running `bun install --frozen-lockfile` (#195). The
   # dedicated bun ecosystem has no security-update support, unlike npm's, but
-  # these are devDependencies only - `bun audit` in CI already flags a
-  # vulnerable pin on every push, so there's nothing this loses in practice.
+  # these are devDependencies only - the daily advisory scan already tracks a
+  # vulnerable pin in a `Dependency advisories` issue, so nothing is lost.
   - package-ecosystem: "bun"
     directory: "/"
     schedule:
