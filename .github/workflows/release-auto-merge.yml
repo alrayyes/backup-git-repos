@@ -21,9 +21,20 @@
 # Confirmed live on washy-washy-cli (#188) and reproduced on
 # hush-hush-action: a GITHUB_TOKEN auto-merge produced zero workflow runs
 # on the merge commit.
+#
+# types explicitly includes labeled: release-please-action opens the pull
+# request and applies the autorelease: pending label as two separate API
+# calls, and the opened event's payload is a snapshot taken before the
+# second one lands. Relying on the default types (opened, synchronize,
+# reopened) alone meant the opened run saw no label and skipped, with no
+# event left to re-check it against. labeled re-fires this workflow once
+# the label actually lands. On any other label the job's if still gates on
+# autorelease: pending, and re-arming auto-merge is idempotent.
 name: release-auto-merge
 
-on: pull_request
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: write
