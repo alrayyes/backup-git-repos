@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.2](https://github.com/alrayyes/backup-git-repos/compare/v1.14.1...v1.14.2) (2026-10-16)
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/term from 0.46.0 to 0.47.0 ([#256](https://github.com/alrayyes/backup-git-repos/issues/256)) ([a281a70](https://github.com/alrayyes/backup-git-repos/commit/a281a702d8ad9643cffa48e4a15693a20e1adbb6))
+
 ## [1.14.1](https://github.com/alrayyes/backup-git-repos/compare/v1.14.0...v1.14.1) (2026-10-15)
 
 
