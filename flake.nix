@@ -25,13 +25,22 @@
           src = ./.;
           subPackages = [ "cmd/backup-git-repos" ];
 
-          vendorHash = "sha256-Ar/cc4nhoTeg03ad2cRURnF91Nc0YWW4OWlFKdrf8vU=";
+          nativeBuildInputs = [ pkgs.installShellFiles ];
+
+          vendorHash = "sha256-MhWXB/aLsJQhC8NAcb6fCQTtJxEAU14l5ieiME2wgA0=";
 
           ldflags = [
             "-s"
             "-w"
             "-X main.version=${self.shortRev or self.dirtyShortRev or "dev"}"
           ];
+
+          # The hidden `man` command writes the pages from the freshly built
+          # binary, the same way goreleaser's before.hooks does.
+          postInstall = ''
+            $out/bin/backup-git-repos man man
+            installManPage man/*.1
+          '';
 
           meta = with pkgs.lib; {
             description = "Mirror every repository on a self-hosted GitLab or Forgejo instance, or a GitHub.com account, to a local, restorable backup";

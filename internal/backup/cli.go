@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
@@ -169,9 +170,32 @@ func NewRootCommand(version string, newRunner NewRunner, opts ...Option) *cobra.
 		},
 	}
 
-	root.AddCommand(runCmd, listCmd, versionCmd, newConfigCommand(&flags))
+	root.AddCommand(runCmd, listCmd, versionCmd, newConfigCommand(&flags), newManCommand())
 
 	return root
+}
+
+// newManCommand writes the man pages into a directory. It's hidden: it exists
+// for the release build (goreleaser's before.hooks and the Nix flake), not for
+// someone reading --help.
+func newManCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:    "man <dir>",
+		Short:  "Write man pages into a directory",
+		Hidden: true,
+		Args:   cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := os.MkdirAll(args[0], 0o750); err != nil {
+				return fmt.Errorf("create man page directory: %w", err)
+			}
+
+			if err := doc.GenManTree(cmd.Root(), &doc.GenManHeader{Title: "BACKUP-GIT-REPOS", Section: "1"}, args[0]); err != nil {
+				return fmt.Errorf("generate man pages: %w", err)
+			}
+
+			return nil
+		},
+	}
 }
 
 func addRunFlags(cmd *cobra.Command, flags *cliFlags) {

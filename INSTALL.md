@@ -2,6 +2,9 @@
 
 One package per package manager, native one first, from-source last.
 
+The AUR, `.deb`, `.rpm` and Nix packages install a man page too:
+`man backup-git-repos`, and `man backup-git-repos-run` for the `run` command.
+
 ## Arch Linux, from the AUR
 
 ```bash
