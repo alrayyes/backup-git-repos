@@ -176,7 +176,7 @@ func NewRootCommand(version string, newRunner NewRunner, opts ...Option) *cobra.
 }
 
 // newManCommand writes the man pages into a directory. It's hidden: it exists
-// for the release build (goreleaser's before.hooks and the Nix flake), not for
+// for the release build (goreleaser's before.hooks), not for
 // someone reading --help.
 func newManCommand() *cobra.Command {
 	return &cobra.Command{

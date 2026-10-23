@@ -28,6 +28,9 @@ builds:
 archives:
   - formats: [tar.gz]
     files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
       - src: manpages/*.1.gz
         strip_parent: true
     name_template: >-
