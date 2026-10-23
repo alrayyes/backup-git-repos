@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/alrayyes/backup-git-repos/compare/v1.14.3...v1.15.0) (2026-10-23)
+
+
+### Features
+
+* ship a man page in the AUR, deb, rpm and Nix packages ([#268](https://github.com/alrayyes/backup-git-repos/issues/268)) ([b3cdd39](https://github.com/alrayyes/backup-git-repos/commit/b3cdd392876765ced9992bad681021528b17d843))
+
 ## [1.14.3](https://github.com/alrayyes/backup-git-repos/compare/v1.14.2...v1.14.3) (2026-10-23)
 
 
