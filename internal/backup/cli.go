@@ -186,10 +186,14 @@ func newManCommand() *cobra.Command {
 		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := os.MkdirAll(args[0], 0o755); err != nil {
-				return err
+				return fmt.Errorf("create man page directory: %w", err)
 			}
 
-			return doc.GenManTree(cmd.Root(), &doc.GenManHeader{Title: "BACKUP-GIT-REPOS", Section: "1"}, args[0])
+			if err := doc.GenManTree(cmd.Root(), &doc.GenManHeader{Title: "BACKUP-GIT-REPOS", Section: "1"}, args[0]); err != nil {
+				return fmt.Errorf("generate man pages: %w", err)
+			}
+
+			return nil
 		},
 	}
 }
