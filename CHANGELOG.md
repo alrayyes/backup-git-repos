@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.3](https://github.com/alrayyes/backup-git-repos/compare/v1.14.2...v1.14.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* **nix:** build the flake with Go 1.26.9 and keep it checked ([#272](https://github.com/alrayyes/backup-git-repos/issues/272)) ([bffe9ae](https://github.com/alrayyes/backup-git-repos/commit/bffe9ae37e6d8f282d1da618dd6af7fe89347ea0))
+
 ## [1.14.2](https://github.com/alrayyes/backup-git-repos/compare/v1.14.1...v1.14.2) (2026-10-16)
 
 
