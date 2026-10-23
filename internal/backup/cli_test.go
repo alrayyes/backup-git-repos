@@ -608,3 +608,23 @@ forges:
 		filepath.Join(dest, "b", "b-repo.git"),
 	}, dirs)
 }
+
+func TestCLIManWritesPagesAndStaysHidden(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	root := backup.NewRootCommand("test", neverNewRunner(t))
+	root.SetArgs([]string{"man", dir})
+
+	require.NoError(t, root.Execute())
+
+	require.FileExists(t, filepath.Join(dir, "backup-git-repos.1"))
+	require.FileExists(t, filepath.Join(dir, "backup-git-repos-run.1"))
+
+	var out bytes.Buffer
+	help := backup.NewRootCommand("test", neverNewRunner(t))
+	help.SetOut(&out)
+	help.SetArgs([]string{"--help"})
+	require.NoError(t, help.Execute())
+	require.NotContains(t, out.String(), "man ")
+}
