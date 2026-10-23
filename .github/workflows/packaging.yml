@@ -14,6 +14,7 @@ on:
       - flake.lock
       - go.mod
       - go.sum
+      - scripts/check-archive.sh
       - .github/workflows/packaging.yml
   pull_request:
     branches: [main]
@@ -23,6 +24,7 @@ on:
       - flake.lock
       - go.mod
       - go.sum
+      - scripts/check-archive.sh
       - .github/workflows/packaging.yml
 
 permissions:
@@ -55,6 +57,12 @@ jobs:
         with:
           version: v2.17.1
           args: release --snapshot --clean --skip=docker,aur
+
+      # The AUR package() script installs ./LICENSE and ./*.1.gz out of this
+      # archive, and archives.files replaces goreleaser's default list, so a
+      # dropped entry only shows up at release time without this.
+      - name: Check archive contents
+        run: scripts/check-archive.sh dist/backup-git-repos_*_linux_amd64.tar.gz
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -158,6 +158,9 @@ for no reason. Reproduce it yourself before touching either file:
 # Build the .deb/.rpm without a real release
 bun run goreleaser -- release --snapshot --clean --skip=docker,aur
 
+# Check the archive holds the binary, LICENSE, README and a man page
+scripts/check-archive.sh dist/backup-git-repos_*_linux_amd64.tar.gz
+
 # Install and run one, the same way CI does, in a real (non-slim) base image
 docker run --rm -v "$PWD/dist:/dist:ro" debian:trixie \
   bash -c 'dpkg -i /dist/backup-git-repos_*_linux_amd64.deb && backup-git-repos version'
