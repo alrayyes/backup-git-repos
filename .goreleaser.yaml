@@ -5,6 +5,11 @@ version: 2
 before:
   hooks:
     - go mod tidy
+    # Pages are generated from the cobra command tree, never committed, so
+    # they can't drift from --help. gzipped because Debian policy wants it.
+    - rm -rf manpages
+    - go run ./cmd/backup-git-repos man manpages
+    - sh -c "gzip -9nf manpages/*.1"
 
 builds:
   - id: backup-git-repos
@@ -22,6 +27,9 @@ builds:
 
 archives:
   - formats: [tar.gz]
+    files:
+      - src: manpages/*.1.gz
+        strip_parent: true
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
 
@@ -48,6 +56,8 @@ nfpms:
     contents:
       - src: ./LICENSE
         dst: /usr/share/licenses/backup-git-repos/LICENSE
+      - src: ./manpages/*.1.gz
+        dst: /usr/share/man/man1/
 
 # Pushes an updated PKGBUILD to a new aur.archlinux.org/backup-git-repos-bin
 # git repo on every release. "-bin" is AUR's own naming convention for a
@@ -74,6 +84,9 @@ aurs:
     package: |-
       install -Dm755 ./backup-git-repos "${pkgdir}/usr/bin/backup-git-repos"
       install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+      for page in ./*.1.gz; do
+        install -Dm644 "${page}" "${pkgdir}/usr/share/man/man1/$(basename "${page}")"
+      done
 
 # dockers_v2 (buildx-backed) rather than the older dockers/docker_manifests
 # pair: one entry with a platforms list builds and pushes a single

@@ -82,6 +82,9 @@ jobs:
           dpkg -i dist/backup-git-repos_*_linux_amd64.deb
           backup-git-repos version
           backup-git-repos --help >/dev/null
+          # Read the page back rather than trusting the file list: images that
+          # drop /usr/share/man pass a listing check either way.
+          zcat /usr/share/man/man1/backup-git-repos.1.gz | grep -q 'backup-git-repos'
 
   rpm-install:
     name: Install & run (.rpm)
@@ -101,6 +104,9 @@ jobs:
           rpm -i dist/backup-git-repos_*_linux_amd64.rpm
           backup-git-repos version
           backup-git-repos --help >/dev/null
+          # Read the page back rather than trusting the file list: images that
+          # drop /usr/share/man pass a listing check either way.
+          zcat /usr/share/man/man1/backup-git-repos.1.gz | grep -q 'backup-git-repos'
 
   nix-flake-check:
     name: Nix flake check
