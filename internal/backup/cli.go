@@ -185,7 +185,7 @@ func newManCommand() *cobra.Command {
 		Hidden: true,
 		Args:   cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := os.MkdirAll(args[0], 0o755); err != nil {
+			if err := os.MkdirAll(args[0], 0o750); err != nil {
 				return fmt.Errorf("create man page directory: %w", err)
 			}
 
