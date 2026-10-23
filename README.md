@@ -161,10 +161,6 @@ Resulting layout:
 - Exporting issues, releases and pull requests:
   [docs/metadata-export.md](docs/metadata-export.md)
 
-`backup-git-repos list` runs the same discovery without cloning anything, and
-`run --dry-run` also says what each repository would do. Both are the fast way
-to check a config picks up what you expect.
-
 ## License
 
 This project is licensed under the GNU General Public License v3.0 — see the
