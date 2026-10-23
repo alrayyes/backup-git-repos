@@ -12,6 +12,8 @@ on:
       - .goreleaser.yaml
       - flake.nix
       - flake.lock
+      - go.mod
+      - go.sum
       - .github/workflows/packaging.yml
   pull_request:
     branches: [main]
@@ -19,6 +21,8 @@ on:
       - .goreleaser.yaml
       - flake.nix
       - flake.lock
+      - go.mod
+      - go.sum
       - .github/workflows/packaging.yml
 
 permissions:
