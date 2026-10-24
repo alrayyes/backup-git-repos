@@ -41,7 +41,7 @@ jobs:
         with:
           bun-version: "1.3.14"
       # One ticket for both lockfiles: the audit passes only when both are clean.
-      - uses: alrayyes/advisory-scan@9801551dad16ce63853b2babfda885365d368232 # v0.3.0
+      - uses: alrayyes/advisory-scan@c9f794de4354b870e159510f036779baf20f4a2f # v0.3.1
         with:
           mode: scan
           command: |
