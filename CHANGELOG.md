@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.1](https://github.com/alrayyes/backup-git-repos/compare/v1.15.0...v1.15.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **deps:** bump alpine from 3.24.2 to 3.24.3 ([#281](https://github.com/alrayyes/backup-git-repos/issues/281)) ([3299572](https://github.com/alrayyes/backup-git-repos/commit/3299572a75e2480043fdddc126220f9c2b17fdad))
+* **deps:** pin re2js override to patched 2.8.8 ([#289](https://github.com/alrayyes/backup-git-repos/issues/289)) ([c7a8c73](https://github.com/alrayyes/backup-git-repos/commit/c7a8c73c76a4edad684beb6377842ef8c60063ed)), closes [#288](https://github.com/alrayyes/backup-git-repos/issues/288)
+
 ## [1.15.0](https://github.com/alrayyes/backup-git-repos/compare/v1.14.3...v1.15.0) (2026-10-23)
 
 
