@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.2](https://github.com/alrayyes/backup-git-repos/compare/v1.15.1...v1.15.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/spf13/pflag from 1.0.10 to 1.1.0 ([#291](https://github.com/alrayyes/backup-git-repos/issues/291)) ([626f5fd](https://github.com/alrayyes/backup-git-repos/commit/626f5fda537a46a5ec697b0556ea9702cdaca54c))
+* **nix:** update vendorHash for pflag 1.1.0 ([#294](https://github.com/alrayyes/backup-git-repos/issues/294)) ([facfb02](https://github.com/alrayyes/backup-git-repos/commit/facfb02f5184fff4294a416d329f9e4535376ce5))
+
 ## [1.15.1](https://github.com/alrayyes/backup-git-repos/compare/v1.15.0...v1.15.1) (2026-10-31)
 
 
