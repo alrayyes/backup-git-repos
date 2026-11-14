@@ -126,7 +126,7 @@ jobs:
           bun-version: "1.3.14"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/bun-install
 
       # Prettier owns the layout, so it is checked first: if it fails there is
       # no point asking markdownlint about a file that is about to be rewritten.
@@ -149,7 +149,7 @@ jobs:
           bun-version: "1.3.14"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/bun-install
 
       - name: Run prettier on YAML
         run: bun run lint:yaml
@@ -167,7 +167,7 @@ jobs:
           bun-version: "1.3.14"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/bun-install
 
       - name: Run Biome
         run: bun run lint:json
@@ -185,7 +185,7 @@ jobs:
           bun-version: "1.3.14"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/bun-install
 
       - name: Check package.json is sorted
         run: bun run lint:package-json
@@ -254,7 +254,7 @@ jobs:
           bun-version: "1.3.14"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/bun-install
 
       - name: Validate PR commits with commitlint
         run: bunx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose

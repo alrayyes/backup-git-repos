@@ -1,0 +1,33 @@
+# `bun install` runs @vvago/vale's postinstall, which downloads the vale
+# binary from GitHub releases with no auth and no retry. GitHub intermittently
+# answers that with a 403, which turns an unrelated job red until someone
+# re-runs it (#315). Retry the install a few times before giving up.
+name: Install bun dependencies
+description: bun install --frozen-lockfile, retried on transient download failures
+inputs:
+  attempts:
+    description: How many times to try before failing
+    default: "3"
+  delay:
+    description: Seconds to wait between attempts
+    default: "15"
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      env:
+        ATTEMPTS: ${{ inputs.attempts }}
+        DELAY: ${{ inputs.delay }}
+      run: |
+        for attempt in $(seq 1 "$ATTEMPTS"); do
+          if bun install --frozen-lockfile; then
+            exit 0
+          fi
+          if [ "$attempt" -lt "$ATTEMPTS" ]; then
+            echo "::warning::bun install failed (attempt $attempt of $ATTEMPTS), retrying in ${DELAY}s"
+            sleep "$DELAY"
+          fi
+        done
+        echo "::error::bun install failed after $ATTEMPTS attempts"
+        exit 1
