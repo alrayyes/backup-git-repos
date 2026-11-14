@@ -1,0 +1,107 @@
+# flake.nix pins vendorHash, the hash of the vendored Go modules, so every
+# Dependabot Go bump that changes go.mod/go.sum leaves it stale and turns
+# `Nix flake check` red. It merged red three times (#296, #298, #300) and the
+# fallout needed a hand-written fix PR each time (#294, #310, #313).
+#
+# This is that fix, done on the Dependabot PR itself: build, read the `got:`
+# hash out of the mismatch, commit it to the PR branch. It's the one unattended
+# commit bot here besides the release job (#316).
+#
+# VENDORHASH_TOKEN is a Dependabot secret (Dependabot runs can't read Actions
+# secrets): a fine-grained PAT with Contents: write on this repo only. It has
+# to be a PAT, not GITHUB_TOKEN, because a push made with GITHUB_TOKEN doesn't
+# trigger workflows, so the fixed head would never get its checks.
+#
+# That push also changes the event actor from dependabot[bot] to the token's
+# owner, which is what stops this workflow re-running on its own commit.
+name: Nix vendorHash
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - go.mod
+      - go.sum
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: nix-vendorhash-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  vendorhash:
+    name: Update vendorHash
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VENDORHASH_TOKEN: ${{ secrets.VENDORHASH_TOKEN }}
+    steps:
+      # A missing or expired token shouldn't turn every Go bump red. Say so and
+      # stop; the Nix flake check on the PR still reports the stale hash.
+      - name: Check for the token
+        id: token
+        run: |
+          if [ -z "$VENDORHASH_TOKEN" ]; then
+            echo "::warning::VENDORHASH_TOKEN is not set (or expired); not updating vendorHash"
+            echo "have=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "have=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.token.outputs.have == 'true'
+        with:
+          # The PR branch itself, not the merge ref, since this pushes to it.
+          # Dependabot branches live in this repo, never a fork.
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ env.VENDORHASH_TOKEN }}
+
+      - uses: cachix/install-nix-action@91f6a0f59e94dfb2cfed0f4000f36a68ead1d20c # v31.11.4
+        if: steps.token.outputs.have == 'true'
+
+      - name: Build
+        id: build
+        if: steps.token.outputs.have == 'true'
+        run: |
+          if nix build --print-build-logs >build.log 2>&1; then
+            echo "vendorHash is already correct"
+            echo "needs_fix=false" >>"$GITHUB_OUTPUT"
+          else
+            tail -n 40 build.log
+            echo "needs_fix=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Update vendorHash
+        id: fix
+        if: steps.build.outputs.needs_fix == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # One automatic fix per head. If the last commit is already ours and the
+          # build still fails, the hash isn't the problem; don't loop on it.
+          if [ "$(git log -1 --format=%s)" = "fix(nix): update vendorHash" ]; then
+            gh pr comment "$PR" --body "The vendorHash commit is already on this branch and \`nix build\` still fails, so it isn't a stale hash. Needs a look."
+            exit 1
+          fi
+          rc=0
+          scripts/update-vendor-hash.sh build.log || rc=$?
+          if [ "$rc" = 3 ]; then
+            gh pr comment "$PR" --body "\`nix build\` failed but not with a vendorHash mismatch, so I left \`flake.nix\` alone. Needs a look."
+            exit 1
+          fi
+          [ "$rc" = 0 ]
+
+      - name: Commit and push
+        if: steps.fix.conclusion == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.nix
+          git commit -m "fix(nix): update vendorHash" \
+            -m "go.mod or go.sum changed, so the vendored module hash did. Updated from the mismatch \`nix build\` reported. Refs #316"
+          git push
