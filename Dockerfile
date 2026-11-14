@@ -2,7 +2,7 @@
 # context and runs `docker build` here -- there's no Go toolchain stage,
 # just a runtime image with git on PATH, since Mirror shells out to it the
 # same way it does outside a container.
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # dockers_v2 stages each platform's binary at <goos>/<goarch>/<binary> in the
 # build context rather than flat at its root, and buildx populates these
