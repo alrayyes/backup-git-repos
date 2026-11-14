@@ -10,7 +10,7 @@ FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN apk add --no-cache git=2.54.0-r0 && \
+RUN apk add --no-cache git=2.54.1-r0 && \
     addgroup -g 1000 backup && \
     adduser -D -u 1000 -G backup backup
 
