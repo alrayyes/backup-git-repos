@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.3](https://github.com/alrayyes/backup-git-repos/compare/v1.15.2...v1.15.3) (2026-11-14)
+
+
+### Bug Fixes
+
+* **docker:** bump pinned apk git to 2.54.1-r0 ([#307](https://github.com/alrayyes/backup-git-repos/issues/307)) ([a8b5c94](https://github.com/alrayyes/backup-git-repos/commit/a8b5c94c5ccb66e0e62686d238ebac5ebe7e6db9)), closes [#75](https://github.com/alrayyes/backup-git-repos/issues/75)
+
 ## [1.15.2](https://github.com/alrayyes/backup-git-repos/compare/v1.15.1...v1.15.2) (2026-11-07)
 
 
