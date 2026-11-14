@@ -13,7 +13,7 @@
 # trigger workflows, so the fixed head would never get its checks.
 #
 # The fixed hash isn't rebuilt here: the push triggers `Nix flake check` in
-# packaging.yml, which is the proof. Trade-off: the Nix pin now follows whatever
+# nix.yml, which is the proof. Trade-off: the Nix pin now follows whatever
 # Dependabot resolved, so it no longer guards against a tampered module (go.sum
 # still does).
 #
