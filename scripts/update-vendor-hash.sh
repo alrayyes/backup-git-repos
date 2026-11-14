@@ -18,10 +18,12 @@ if [ -z "$got" ]; then
 fi
 
 current="$(sed -n 's/.*vendorHash = "\(sha256-[^"]*\)";.*/\1/p' "$flake" | head -n1)"
+if [ -z "$current" ]; then echo "update-vendor-hash: no vendorHash line in $flake" >&2; exit 3; fi
 if [ "$current" = "$got" ]; then
   echo "update-vendor-hash: $flake already has $got" >&2
   exit 3
 fi
 
-sed -i "s|vendorHash = \"[^\"]*\";|vendorHash = \"$got\";|" "$flake"
+# First match only, same as $current: the script assumes one package in the flake.
+sed -i "0,/vendorHash = \"[^\"]*\";/s||vendorHash = \"$got\";|" "$flake"
 echo "update-vendor-hash: $current -> $got"

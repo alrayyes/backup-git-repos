@@ -54,5 +54,22 @@ rc=0; "$script" "$tmp/bad.log" "$tmp/flake.nix" >/dev/null 2>&1 || rc=$?
 check "malformed exit" 3 "$rc"
 grep -q "vendorHash = \"$old\";" "$tmp/flake.nix" || { echo "FAIL malformed: flake.nix changed" >&2; fails=$((fails + 1)); }
 
+# 5. A flake with no vendorHash line is refused, not silently left alone.
+printf '          src = ./.;\n' >"$tmp/flake.nix"
+rc=0; "$script" "$tmp/mismatch.log" "$tmp/flake.nix" >/dev/null 2>&1 || rc=$?
+check "no-vendorHash exit" 3 "$rc"
+
+# 6. CRLF and trailing whitespace on got: still match; the first got: wins.
+flake "$old"
+printf '         specified: %s\r\n            got:    %s  \r\n            got:    sha256-%s=\n' "$old" "$new" "$(printf 'A%.0s' $(seq 43))" >"$tmp/crlf.log"
+rc=0; "$script" "$tmp/crlf.log" "$tmp/flake.nix" >/dev/null 2>&1 || rc=$?
+check "crlf exit" 0 "$rc"
+grep -q "vendorHash = \"$new\";" "$tmp/flake.nix" || { echo "FAIL crlf: first got: not used" >&2; fails=$((fails + 1)); }
+
+# 7. Only the first vendorHash is rewritten.
+printf 'vendorHash = "%s";\nvendorHash = "%s";\n' "$old" "$old" >"$tmp/flake.nix"
+"$script" "$tmp/mismatch.log" "$tmp/flake.nix" >/dev/null
+[ "$(grep -c "$new" "$tmp/flake.nix")" = 1 ] || { echo "FAIL multi: not first-only" >&2; fails=$((fails + 1)); }
+
 [ "$fails" -eq 0 ] && echo "update-vendor-hash: all tests passed"
 exit "$fails"
