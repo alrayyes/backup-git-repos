@@ -1,17 +1,16 @@
 name: Packaging
 
 # goreleaser check (lint.yml) only validates .goreleaser.yaml's syntax --
-# it never builds or installs anything, so a broken .deb/.rpm or Nix flake
-# passes it silently. This actually builds the nfpm packages and the Nix
-# flake, installs the packages into a real (non-slim/non-minimal) base
-# image each, and runs the installed binary from both.
+# it never builds or installs anything, so a broken .deb/.rpm passes it
+# silently. This actually builds the nfpm packages, installs them into a real
+# (non-slim/non-minimal) base image each, and runs the installed binary from
+# both. The Nix flake has its own workflow, nix.yml, so that check can be
+# required on every pull request.
 on:
   push:
     branches: [main]
     paths:
       - .goreleaser.yaml
-      - flake.nix
-      - flake.lock
       - go.mod
       - go.sum
       - scripts/check-archive.sh
@@ -20,8 +19,6 @@ on:
     branches: [main]
     paths:
       - .goreleaser.yaml
-      - flake.nix
-      - flake.lock
       - go.mod
       - go.sum
       - scripts/check-archive.sh
@@ -115,16 +112,3 @@ jobs:
           # Read the page back rather than trusting the file list: images that
           # drop /usr/share/man pass a listing check either way.
           zcat /usr/share/man/man1/backup-git-repos.1.gz | grep -q 'backup-git-repos'
-
-  nix-flake-check:
-    name: Nix flake check
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: cachix/install-nix-action@91f6a0f59e94dfb2cfed0f4000f36a68ead1d20c # v31.11.4
-
-      - run: nix flake check --print-build-logs
-
-      - run: nix build --print-build-logs

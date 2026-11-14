@@ -146,11 +146,11 @@ and keeps one open `Dependency advisories` issue for what is already there;
 nothing is ignored. Run `govulncheck ./...` yourself before pushing a
 dependency change.
 
-Installing and running the `.deb`/`.rpm`/Nix flake it builds is a third.
+Installing and running the `.deb`/`.rpm` it builds is a third.
 `goreleaser check` in CI already validates `.goreleaser.yaml` on every push,
 but only for syntax: it never builds or installs anything, so a broken
 package would still pass it. `packaging.yml` catches that instead, gated to
-runs where a pull request touches `.goreleaser.yaml` or `flake.nix`, since
+runs where a pull request touches `.goreleaser.yaml`, since
 building every package format on every unrelated change would slow CI down
 for no reason. Reproduce it yourself before touching either file:
 
@@ -168,6 +168,12 @@ docker run --rm -v "$PWD/dist:/dist:ro" debian:trixie \
 # Nix
 nix flake check && nix build
 ```
+
+The Nix half has its own workflow, `nix.yml`, and `Nix flake check` is meant
+to be a required check on `main` (#316). It reports on every pull request and skips itself
+unless the change touches `flake.nix`, `flake.lock`, `go.mod` or `go.sum`.
+`go.mod` and `go.sum` matter because the flake pins `vendorHash`; on a
+Dependabot Go bump `nix-vendorhash.yml` updates it for you.
 
 The hooks and the GitHub Actions workflows run the same commands on purpose.
 The hook catches a problem early; CI is the gate you can't skip.
