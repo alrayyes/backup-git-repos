@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.15.5](https://github.com/alrayyes/backup-git-repos/compare/v1.15.4...v1.15.5) (2026-11-14)
+
+
+### Bug Fixes
+
+* **deps:** bump alpine from 3.24.3 to 3.24.4 ([#302](https://github.com/alrayyes/backup-git-repos/issues/302)) ([8631bdb](https://github.com/alrayyes/backup-git-repos/commit/8631bdbf7beef9666abc7d5cb169a7c284467d8f))
+* **deps:** bump github.com/testcontainers/testcontainers-go/modules/forgejo ([#300](https://github.com/alrayyes/backup-git-repos/issues/300)) ([2b6c9e7](https://github.com/alrayyes/backup-git-repos/commit/2b6c9e7f900f5d21f73e09e3745ff7dabaded6a1))
+* **deps:** bump golang.org/x/sync from 0.24.0 to 0.25.0 ([#298](https://github.com/alrayyes/backup-git-repos/issues/298)) ([b69bb16](https://github.com/alrayyes/backup-git-repos/commit/b69bb166eedac670a1912081e2bfac5713fed722))
+* **nix:** update vendorHash for testcontainers 0.45.0 ([#313](https://github.com/alrayyes/backup-git-repos/issues/313)) ([235af0c](https://github.com/alrayyes/backup-git-repos/commit/235af0c8d0fbe37a102f43b3a24e253fb9a3c617))
+
 ## [1.15.4](https://github.com/alrayyes/backup-git-repos/compare/v1.15.3...v1.15.4) (2026-11-14)
 
 
