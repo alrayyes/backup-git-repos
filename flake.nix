@@ -27,7 +27,7 @@
 
           nativeBuildInputs = [ pkgs.installShellFiles ];
 
-          vendorHash = "sha256-/+rGhUZKV663clb4LV13dNgnQI3iVuWT7wNBA0W10xE=";
+          vendorHash = "sha256-vI3DQ6zmaZRy8UsYyGf1x1J2e2vScbTj3W+VhlWfV50=";
 
           ldflags = [
             "-s"
