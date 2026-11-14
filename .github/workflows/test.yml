@@ -29,6 +29,9 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Test update-vendor-hash
+        run: scripts/update-vendor-hash.test.sh
+
       - name: Vet
         run: go vet ./...
 
