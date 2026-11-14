@@ -1,8 +1,8 @@
 name: Nix
 
 # The Nix flake pins vendorHash, which goes stale whenever go.mod or go.sum
-# change, so a broken flake can merge unnoticed. `Nix flake check` is meant to
-# be a required status check on main (#316).
+# change, so a broken flake can merge unnoticed. `Nix flake check` is a
+# required status check on main (#316).
 #
 # A required check has to report on every pull request, and a `paths:` filter on
 # the workflow would leave it pending forever on the ones that don't touch the
