@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.4](https://github.com/alrayyes/backup-git-repos/compare/v1.15.3...v1.15.4) (2026-11-14)
+
+
+### Bug Fixes
+
+* **nix:** update vendorHash for x/term 0.48.0 ([#310](https://github.com/alrayyes/backup-git-repos/issues/310)) ([fcbc8b0](https://github.com/alrayyes/backup-git-repos/commit/fcbc8b022f397eb31159287f034fc13cb06b360d)), closes [#309](https://github.com/alrayyes/backup-git-repos/issues/309)
+
 ## [1.15.3](https://github.com/alrayyes/backup-git-repos/compare/v1.15.2...v1.15.3) (2026-11-14)
 
 
