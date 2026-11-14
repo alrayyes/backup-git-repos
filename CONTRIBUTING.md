@@ -169,8 +169,8 @@ docker run --rm -v "$PWD/dist:/dist:ro" debian:trixie \
 nix flake check && nix build
 ```
 
-The Nix half has its own workflow, `nix.yml`, and `Nix flake check` is a
-required check on `main`. It reports on every pull request and skips itself
+The Nix half has its own workflow, `nix.yml`, and `Nix flake check` is meant
+to be a required check on `main` (#316). It reports on every pull request and skips itself
 unless the change touches `flake.nix`, `flake.lock`, `go.mod` or `go.sum`.
 `go.mod` and `go.sum` matter because the flake pins `vendorHash`; on a
 Dependabot Go bump `nix-vendorhash.yml` updates it for you.
