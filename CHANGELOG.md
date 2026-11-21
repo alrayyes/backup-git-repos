@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.6](https://github.com/alrayyes/backup-git-repos/compare/v1.15.5...v1.15.6) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/moby/moby/api from 1.56.1 to 1.57.0 ([#323](https://github.com/alrayyes/backup-git-repos/issues/323)) ([1c0f797](https://github.com/alrayyes/backup-git-repos/commit/1c0f797c3559f49ae543a297e13aa9f03b0dafa7))
+* **deps:** update fast-uri to clear four advisories ([#337](https://github.com/alrayyes/backup-git-repos/issues/337)) ([edd573b](https://github.com/alrayyes/backup-git-repos/commit/edd573b46d48d8cb385abc07326cec0302933e99)), closes [#336](https://github.com/alrayyes/backup-git-repos/issues/336)
+
 ## [1.15.5](https://github.com/alrayyes/backup-git-repos/compare/v1.15.4...v1.15.5) (2026-11-14)
 
 
