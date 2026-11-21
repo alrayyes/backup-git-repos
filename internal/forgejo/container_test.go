@@ -14,7 +14,11 @@ import (
 
 // Pinned by digest as well as tag: the module's own examples pin :11, so this
 // is the first thing to fail if 16.0.3 behaves differently.
-const image = "codeberg.org/forgejo/forgejo:16.0.3@sha256:7c4e1db440be7b2ca685b49d0d7864cdd78e92431f531bf7893659def8200fc5"
+//
+// Pulled from Forgejo's own registry. codeberg.org lists the same 16.x tags but
+// answers 404 for their per-platform manifests, so a pull fails there while the
+// digest is identical here (#73).
+const image = "data.forgejo.org/forgejo/forgejo:16.0.3@sha256:7c4e1db440be7b2ca685b49d0d7864cdd78e92431f531bf7893659def8200fc5"
 
 func TestContainerBoots(t *testing.T) {
 	t.Parallel()
